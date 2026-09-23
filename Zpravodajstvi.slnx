@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Zpravodajstvi.Application/Zpravodajstvi.Application.csproj" />
+    <Project Path="src/Zpravodajstvi.Domain/Zpravodajstvi.Domain.csproj" />
+    <Project Path="src/Zpravodajstvi.Infrastructure/Zpravodajstvi.Infrastructure.csproj" />
+    <Project Path="src/Zpravodajstvi.Presentation/Zpravodajstvi.Presentation.csproj" />
+  </Folder>
+</Solution>

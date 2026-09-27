@@ -1,17 +1,21 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Zpravodajstvi.Application.Interfaces;
+using Zpravodajstvi.Application.Services;
 using Zpravodajstvi.Infrastructure.Data;
 using Zpravodajstvi.Infrastructure.Identity;
+using Zpravodajstvi.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Konfigurace databáze SQLite
+// 1. Konfigurace databáze SQLite (Z 1. commitu)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Data Source=zpravodajstvi.db";
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString));
 
-// 2. Konfigurace ASP.NET Core Identity s rolemi
+// 2. Konfigurace ASP.NET Core Identity s rolemi (Z 1. commitu)
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = false;
@@ -32,18 +36,24 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
 });
 
-// Základní podpora pro MVC
+// 3. Registrace aplikačních služeb a repozitářů v DI (Právě dodáno ze 2. commitu)
+builder.Services.AddScoped<IArticleRepository, ArticleRepository>();
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+builder.Services.AddScoped<IArticleService, ArticleService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
+
+// 4. Přidání MVC kontrolerů a pohledů
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
-// 3. Inicializace databáze a seeding rolí
+// 5. Inicializace databáze a seeding rolí (Z 1. commitu)
 using (var scope = app.Services.CreateScope())
 {
     await DbInitializer.SeedDataAsync(scope.ServiceProvider);
 }
 
-// 4. Konfigurace HTTP pipeline
+// 6. Konfigurace HTTP pipeline
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");

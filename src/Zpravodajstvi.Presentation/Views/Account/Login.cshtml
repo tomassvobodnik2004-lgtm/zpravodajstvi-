@@ -1,0 +1,57 @@
+@model Zpravodajstvi.Presentation.Models.LoginViewModel
+@{
+    ViewData["Title"] = "Přihlášení";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white text-center py-3">
+                <h4 class="mb-0 fw-bold">Přihlášení do systému</h4>
+            </div>
+            <div class="card-body p-4">
+                <form asp-action="Login" asp-route-returnurl="@ViewData["ReturnUrl"]" method="post">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label fw-semibold"></label>
+                        <input asp-for="Email" class="form-control" placeholder="např. admin@zpravodajstvi.cz" autocomplete="username" />
+                        <span asp-validation-for="Email" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Password" class="form-label fw-semibold"></label>
+                        <input asp-for="Password" class="form-control" placeholder="••••••••" autocomplete="current-password" />
+                        <span asp-validation-for="Password" class="text-danger small"></span>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input asp-for="RememberMe" class="form-check-input" />
+                        <label asp-for="RememberMe" class="form-check-label"></label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">Přihlásit se</button>
+                </form>
+
+                <hr class="my-4" />
+
+                <!-- Rychlá nápověda pro zkoušení předvytvořených rolí -->
+                <div class="alert alert-info mb-0 small">
+                    <div class="fw-bold mb-1">💡 Testovací účty pro prezentaci:</div>
+                    <ul class="mb-0 ps-3">
+                        <li><strong>Admin:</strong> <code>admin@zpravodajstvi.cz</code> / <code>Heslo123!</code></li>
+                        <li><strong>Redaktor:</strong> <code>redaktor@zpravodajstvi.cz</code> / <code>Heslo123!</code></li>
+                        <li><strong>Čtenář:</strong> <code>ctenar@zpravodajstvi.cz</code> / <code>Heslo123!</code></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-footer text-center bg-white py-3 border-0">
+                Nemáte ještě účet? <a asp-action="Register" asp-route-returnurl="@ViewData["ReturnUrl"]">Zaregistrujte se</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

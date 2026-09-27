@@ -8,14 +8,14 @@ using Zpravodajstvi.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Konfigurace databáze SQLite (Z 1. commitu)
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+// 1. Konfigurace databáze SQLite
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? "Data Source=zpravodajstvi.db";
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString));
 
-// 2. Konfigurace ASP.NET Core Identity s rolemi (Z 1. commitu)
+// 2. Konfigurace ASP.NET Core Identity s rolemi
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = false;
@@ -36,7 +36,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
 });
 
-// 3. Registrace aplikačních služeb a repozitářů v DI (Právě dodáno ze 2. commitu)
+// 3. Registrace aplikačních služeb a repozitářů v DI
 builder.Services.AddScoped<IArticleRepository, ArticleRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<IArticleService, ArticleService>();
@@ -47,7 +47,7 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
-// 5. Inicializace databáze a seeding rolí (Z 1. commitu)
+// 5. Inicializace databáze a seeding rolí i ukázkových článků
 using (var scope = app.Services.CreateScope())
 {
     await DbInitializer.SeedDataAsync(scope.ServiceProvider);
@@ -67,6 +67,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+
+// Routa pro administrátorskou Area (připraveno pro Osobu A)
+app.MapControllerRoute(
+    name: "areas",
+    pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
 
 app.MapControllerRoute(
     name: "default",

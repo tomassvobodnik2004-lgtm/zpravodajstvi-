@@ -1,8 +1,114 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@model IEnumerable<Zpravodajstvi.Application.DTOs.ArticleListDto>
+@{
+    ViewData["Title"] = "Aktuální zpravodajství";
+    var categories = ViewBag.Categories as IEnumerable<Zpravodajstvi.Application.DTOs.CategoryDto> ?? Enumerable.Empty<Zpravodajstvi.Application.DTOs.CategoryDto>();
+    int? currentCategory = ViewBag.CurrentCategory;
+    string? currentTag = ViewBag.CurrentTag;
+    string? currentSearch = ViewBag.CurrentSearch;
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="py-3 mb-4 border-bottom bg-white rounded shadow-sm px-4">
+    <div class="row align-items-center">
+        <div class="col-md-7">
+            <h1 class="h3 fw-bold mb-1">📰 Hlavní zprávy a události</h1>
+            <p class="text-muted mb-0">Nejčerstvější informace z domova i ze světa</p>
+        </div>
+        <div class="col-md-5 mt-3 mt-md-0">
+            <form method="get" asp-action="Index" class="d-flex">
+                @if (currentCategory.HasValue)
+                {
+                    <input type="hidden" name="categoryId" value="@currentCategory.Value" />
+                }
+                <div class="input-group">
+                    <input type="text" name="search" class="form-control" placeholder="Hledat v článcích..." value="@currentSearch" />
+                    <button class="btn btn-primary" type="submit">🔍 Hledat</button>
+                    @if (!string.IsNullOrEmpty(currentSearch) || currentCategory.HasValue || !string.IsNullOrEmpty(currentTag))
+                    {
+                        <a asp-action="Index" class="btn btn-outline-secondary" title="Zrušit filtr">✖</a>
+                    }
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+<!-- Filtrační záložky kategorií -->
+<div class="mb-4 d-flex flex-wrap gap-2">
+    <a asp-action="Index" asp-route-search="@currentSearch" class="btn btn-sm @(!currentCategory.HasValue && string.IsNullOrEmpty(currentTag) ? "btn-dark" : "btn-outline-dark")">
+        Všechny zprávy
+    </a>
+    @foreach (var cat in categories)
+    {
+        <a asp-action="Index" asp-route-categoryId="@cat.Id" asp-route-search="@currentSearch" 
+           class="btn btn-sm @(currentCategory == cat.Id ? "btn-primary" : "btn-outline-primary")">
+            @cat.Name <span class="badge bg-secondary ms-1">@cat.ArticlesCount</span>
+        </a>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(currentTag))
+{
+    <div class="alert alert-info py-2 d-flex justify-content-between align-items-center">
+        <span>Filtrováno podle štítku: <strong>#@currentTag</strong></span>
+        <a asp-action="Index" asp-route-categoryId="@currentCategory" class="btn-close" aria-label="Zrušit"></a>
+    </div>
+}
+
+<!-- Výpis článků -->
+@if (!Model.Any())
+{
+    <div class="alert alert-warning text-center py-5 shadow-sm">
+        <h4 class="alert-heading">Žádné články nebyly nalezeny</h4>
+        <p class="mb-0">Zkuste změnit vyhledávací dotaz nebo vybrat jinou kategorii.</p>
+        <a asp-action="Index" class="btn btn-outline-dark mt-3">Zobrazit všechny články</a>
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        @foreach (var article in Model)
+        {
+            <div class="col">
+                <div class="card h-100 shadow-sm border-0 transition-all hover-shadow">
+                    @if (!string.IsNullOrEmpty(article.ImageUrl))
+                    {
+                        <img src="@article.ImageUrl" class="card-img-top" alt="@article.Title" style="height: 200px; object-fit: cover;" />
+                    }
+                    else
+                    {
+                        <div class="bg-secondary text-white text-center py-5 d-flex align-items-center justify-content-center" style="height: 200px;">
+                            <span class="fs-1">📰</span>
+                        </div>
+                    }
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-primary">@article.CategoryName</span>
+                            <small class="text-muted">@article.CreatedAt.ToString("d. M. yyyy HH:mm")</small>
+                        </div>
+                        <h5 class="card-title fw-bold">
+                            <a asp-action="Details" asp-route-id="@article.Id" class="text-decoration-none text-dark stretched-link">
+                                @article.Title
+                            </a>
+                        </h5>
+                        <p class="card-text text-muted flex-grow-1">
+                            @article.Perex
+                        </p>
+                        <div class="pt-2 border-top mt-auto d-flex justify-content-between align-items-center position-relative" style="z-index: 2;">
+                            <div class="tags-list">
+                                @foreach (var tag in article.Tags)
+                                {
+                                    <a asp-action="Index" asp-route-tag="@tag" class="badge bg-light text-secondary text-decoration-none border me-1">
+                                        #@tag
+                                    </a>
+                                }
+                            </div>
+                            <span class="text-muted small">
+                                💬 @article.CommentsCount
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

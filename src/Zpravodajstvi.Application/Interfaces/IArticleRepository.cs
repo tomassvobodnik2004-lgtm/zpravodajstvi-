@@ -1,4 +1,4 @@
-﻿using Zpravodajstvi.Domain.Entities;
+using Zpravodajstvi.Domain.Entities;
 
 namespace Zpravodajstvi.Application.Interfaces;
 

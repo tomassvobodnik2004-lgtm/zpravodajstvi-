@@ -1,4 +1,4 @@
-﻿using Zpravodajstvi.Application.DTOs;
+using Zpravodajstvi.Application.DTOs;
 using Zpravodajstvi.Application.Interfaces;
 
 namespace Zpravodajstvi.Application.Services;

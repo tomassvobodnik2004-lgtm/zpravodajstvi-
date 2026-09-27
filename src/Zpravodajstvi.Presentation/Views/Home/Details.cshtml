@@ -1,0 +1,146 @@
+@model Zpravodajstvi.Application.DTOs.ArticleDetailDto
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <!-- Tlačítko zpět -->
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm mb-4">← Zpět na přehled zpráv</a>
+
+        <!-- Hlavička článku -->
+        <article class="bg-white p-4 p-md-5 rounded shadow-sm mb-5">
+            <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
+                <span class="badge bg-primary fs-6">@Model.CategoryName</span>
+                <span class="text-muted small">Publikováno: @Model.CreatedAt.ToString("d. M. yyyy v HH:mm")</span>
+                @if (Model.UpdatedAt.HasValue)
+                {
+                    <span class="text-muted small italic">(Aktualizováno: @Model.UpdatedAt.Value.ToString("d. M. yyyy HH:mm"))</span>
+                }
+            </div>
+
+            <h1 class="display-6 fw-bold mb-3">@Model.Title</h1>
+
+            <!-- Perex -->
+            <p class="lead text-secondary border-start border-4 border-primary ps-3 my-4">
+                @Model.Perex
+            </p>
+
+            <!-- Hlavní obrázek / Galerie obrázků článku -->
+            @if (Model.Images.Any())
+            {
+                <div class="my-4">
+                    @foreach (var img in Model.Images)
+                    {
+                        <figure class="figure w-100">
+                            <img src="@img.Url" class="figure-img img-fluid rounded w-100 shadow-sm" alt="@img.Caption" style="max-height: 480px; object-fit: cover;" />
+                            @if (!string.IsNullOrEmpty(img.Caption))
+                            {
+                                <figcaption class="figure-caption text-center mt-2">📷 @img.Caption</figcaption>
+                            }
+                        </figure>
+                    }
+                </div>
+            }
+
+            <!-- Plný text článku -->
+            <div class="article-content fs-5 lh-lg my-4 text-dark" style="white-space: pre-line;">
+                @Model.Content
+            </div>
+
+            <!-- Štítky článku -->
+            @if (Model.Tags.Any())
+            {
+                <div class="pt-4 border-top">
+                    <span class="fw-semibold me-2">Štítky:</span>
+                    @foreach (var tag in Model.Tags)
+                    {
+                        <a asp-action="Index" asp-route-tag="@tag" class="badge bg-light text-secondary text-decoration-none border me-1 py-2 px-3">
+                            #@tag
+                        </a>
+                    }
+                </div>
+            }
+        </article>
+
+        <!-- Sekce komentářů -->
+        <section id="comments" class="bg-white p-4 p-md-5 rounded shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                <h3 class="fw-bold mb-0">💬 Diskuze k článku (@Model.Comments.Count)</h3>
+            </div>
+
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    ✅ @TempData["SuccessMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            <!-- Formulář pro přidání komentáře -->
+            <div class="card bg-light border-0 mb-4 p-3 p-md-4">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <h5 class="fw-bold mb-3">Přidat komentář</h5>
+                    <form asp-controller="Comments" asp-action="Add" method="post">
+                        <input type="hidden" asp-for="NewComment.ArticleId" value="@Model.Id" />
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="NewComment.AuthorName" class="form-label fw-semibold"></label>
+                            <input asp-for="NewComment.AuthorName" class="form-control" />
+                            <span asp-validation-for="NewComment.AuthorName" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="NewComment.Content" class="form-label fw-semibold"></label>
+                            <textarea asp-for="NewComment.Content" class="form-control" rows="4" placeholder="Napište svůj názor k článku (vulgární výrazy budou zablokovány)..."></textarea>
+                            <span asp-validation-for="NewComment.Content" class="text-danger small"></span>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">ℹ️ Komentáře jsou kontrolovány filtrem nevhodných slov.</small>
+                            <button type="submit" class="btn btn-primary px-4 fw-semibold">Odeslat komentář</button>
+                        </div>
+                    </form>
+                }
+                else
+                {
+                    <div class="text-center py-3">
+                        <h5 class="fw-bold mb-2">Zapojte se do diskuze</h5>
+                        <p class="text-muted mb-3">Pro přidávání komentářů je vyžadováno přihlášení s rolí Čtenář.</p>
+                        <a asp-controller="Account" asp-action="Login" asp-route-returnurl="@Context.Request.Path" class="btn btn-primary me-2">Přihlásit se</a>
+                        <a asp-controller="Account" asp-action="Register" asp-route-returnurl="@Context.Request.Path" class="btn btn-outline-primary">Registrovat se</a>
+                    </div>
+                }
+            </div>
+
+            <!-- Výpis existujících komentářů -->
+            @if (!Model.Comments.Any())
+            {
+                <div class="text-center py-4 text-muted">
+                    Zatím zde nejsou žádné komentáře. Buďte první, kdo se vyjádří!
+                </div>
+            }
+            else
+            {
+                <div class="d-flex flex-column gap-3">
+                    @foreach (var comment in Model.Comments)
+                    {
+                        <div class="border rounded p-3 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold text-dark">👤 @comment.AuthorName</span>
+                                <small class="text-muted">@comment.CreatedAt.ToString("d. M. yyyy v HH:mm")</small>
+                            </div>
+                            <p class="mb-0 text-secondary" style="white-space: pre-line;">@comment.Content</p>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

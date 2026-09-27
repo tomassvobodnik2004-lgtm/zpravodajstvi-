@@ -1,0 +1,44 @@
+@model Zpravodajstvi.Presentation.Areas.Admin.Models.EditUserViewModel
+
+<div class="container mt-4" style="max-width: 650px;">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Upravit uživatelský účet</h4>
+        </div>
+        <div class="card-body">
+            <form asp-area="Admin" asp-controller="User" asp-action="Edit" method="post">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <input type="hidden" asp-for="UserId" />
+
+                <div class="mb-3">
+                    <label asp-for="FullName" class="form-label fw-bold">Celé jméno:</label>
+                    <input asp-for="FullName" class="form-control" placeholder="Zadejte celé jméno" />
+                    <span asp-validation-for="FullName" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Email" class="form-label fw-bold">E-mailová adresa:</label>
+                    <input asp-for="Email" class="form-control" type="email" placeholder="uzivatel@example.com" />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="SelectedRole" class="form-label fw-bold">Vyberte roli:</label>
+                    <select asp-for="SelectedRole" asp-items="Model.AvailableRoles" class="form-select"></select>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="NewPassword" class="form-label fw-bold">Změnit heslo:</label>
+                    <input asp-for="NewPassword" class="form-control" type="password" placeholder="Ponechte prázdné pro zachování stávajícího hesla" />
+                    <small class="form-text text-muted">Vyplňte pouze v případě, že chcete uživateli nastavit nové heslo.</small>
+                    <span asp-validation-for="NewPassword" class="text-danger"></span>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <a asp-area="Admin" asp-controller="User" asp-action="Index" class="btn btn-secondary">Zpět na přehled</a>
+                    <button type="submit" class="btn btn-primary">Uložit změny účtu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

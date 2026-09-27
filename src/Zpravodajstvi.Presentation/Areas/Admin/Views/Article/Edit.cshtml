@@ -1,0 +1,49 @@
+@model Zpravodajstvi.Presentation.Areas.Admin.Models.ArticleEditViewModel
+
+<div class="container mt-4">
+    <h2>Upravit článek</h2>
+    <hr />
+
+    <form asp-area="Admin" asp-controller="Article" asp-action="Edit" method="post" enctype="multipart/form-data">
+        <!-- Zásadní krok: musíme odeslat ID článku zpět na server, ale uživatel ho nesmí vidět -->
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="ExistingImageUrl" />
+
+        <div class="mb-3">
+            <label asp-for="Title" class="form-label">Titulek článku</label>
+            <input asp-for="Title" class="form-control" required />
+            <span asp-validation-for="Title" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="CategoryId" class="form-label">Kategorie</label>
+            <select asp-for="CategoryId" asp-items="Model.Categories" class="form-select" required>
+                <option value="">-- Vyberte kategorii --</option>
+            </select>
+            <span asp-validation-for="CategoryId" class="text-danger"></span>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.ExistingImageUrl))
+        {
+            <div class="mb-3">
+                <label class="form-label d-block">Stávající obrázek</label>
+                <img src="@Model.ExistingImageUrl" alt="Obrázek článku" class="img-thumbnail" style="max-height: 150px;" />
+            </div>
+        }
+
+        <div class="mb-3">
+            <label asp-for="ImageFile" class="form-label">Změnit obrázek článku (volitelné)</label>
+            <input asp-for="ImageFile" type="file" class="form-control" accept="image/*" />
+            <span asp-validation-for="ImageFile" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Content" class="form-label">Text článku</label>
+            <textarea asp-for="Content" class="form-control" rows="8" required></textarea>
+            <span asp-validation-for="Content" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-warning">Uložit změny</button>
+        <a asp-area="Admin" asp-controller="Article" asp-action="Index" class="btn btn-secondary">Zpět na výpis</a>
+    </form>
+</div>

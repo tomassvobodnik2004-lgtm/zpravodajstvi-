@@ -1,0 +1,15 @@
+<div class="container mt-4">
+    <h2>Vytvořit novou kategorii</h2>
+    <hr />
+
+    <form asp-area="Admin" asp-controller="Category" asp-action="Create" method="post">
+        <div class="mb-3">
+            <label for="name" class="form-label">Název kategorie</label>
+            <input type="text" id="name" name="name" class="form-control" required />
+            <span class="text-danger">@Html.ValidationMessage("name")</span>
+        </div>
+
+        <button type="submit" class="btn btn-success">Uložit kategorii</button>
+        <a asp-area="Admin" asp-controller="Category" asp-action="Index" class="btn btn-secondary">Zpět na seznam</a>
+    </form>
+</div>

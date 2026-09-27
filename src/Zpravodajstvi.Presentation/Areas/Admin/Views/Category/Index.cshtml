@@ -1,0 +1,50 @@
+@model IEnumerable<Zpravodajstvi.Application.DTOs.CategoryDto>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Správa kategorií</h2>
+        <a asp-area="Admin" asp-controller="Category" asp-action="Create" class="btn btn-primary">
+            + Přidat novou kategorii
+        </a>
+    </div>
+
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Název kategorie</th>
+                <th>Počet článků</th>
+                <th>Akce</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                foreach (var cat in Model)
+                {
+                    <tr>
+                        <td>@cat.Id</td>
+                        <td>@cat.Name</td>
+                        <td>@cat.ArticlesCount</td>
+                        <td>
+                            <a asp-area="Admin" asp-controller="Category" asp-action="Delete" asp-route-id="@cat.Id" class="btn btn-sm btn-danger">Smazat</a>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="4" class="text-center">Zatím nebyly vytvořeny žádné kategorie.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <div>
+        <a asp-area="Admin" asp-controller="Article" asp-action="Index" class="btn btn-secondary me-2">Zpět na správu článků</a>
+        @if (User.IsInRole("Admin"))
+        {
+            <a asp-area="Admin" asp-controller="User" asp-action="Index" class="btn btn-outline-dark">👥 Správa účtů</a>
+        }
+    </div>
+</div>

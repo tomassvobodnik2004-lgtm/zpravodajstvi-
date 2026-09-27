@@ -1,9 +1,15 @@
 <!DOCTYPE html>
-<html lang="cs">
+<html lang="cs" data-bs-theme="light">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Zpravodajství</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+        })();
+    </script>
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -26,6 +32,11 @@
                             <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Domů</a>
                         </li>
                     </ul>
+                    <div class="d-flex align-items-center me-3">
+                        <button id="themeToggleBtn" type="button" class="btn btn-outline-light btn-sm" onclick="toggleTheme()" title="Přepnout motiv (Light / Black)">
+                            <span id="themeToggleIcon">☀️ Light</span>
+                        </button>
+                    </div>
                     <partial name="_LoginPartial" />
                 </div>
             </div>

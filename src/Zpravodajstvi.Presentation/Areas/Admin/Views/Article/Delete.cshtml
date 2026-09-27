@@ -1,0 +1,21 @@
+@model Zpravodajstvi.Application.DTOs.ArticleDetailDto
+
+<div class="container mt-4">
+    <h2>Opravdu chcete smazat tento článek?</h2>
+    
+    <div class="alert alert-danger mt-3 shadow-sm">
+        <h4 class="alert-heading">@Model.Title</h4>
+        <p class="mb-1"><strong>Kategorie:</strong> @Model.CategoryName | <strong>Vytvořeno:</strong> @Model.CreatedAt.ToString("d. M. yyyy HH:mm")</p>
+        <hr />
+        <p class="mb-0 text-muted">@Model.Perex</p>
+        <p class="mt-2 text-danger fw-bold mb-0">⚠️ Tuto akci nelze vzít zpět.</p>
+    </div>
+    
+    <form asp-area="Admin" asp-controller="Article" asp-action="Delete" method="post">
+        <!-- Znovu posíláme ID skrytě, aby Controller věděl, co smazat -->
+        <input type="hidden" asp-for="Id" />
+        
+        <button type="submit" class="btn btn-danger me-2">Ano, trvale smazat</button>
+        <a asp-area="Admin" asp-controller="Article" asp-action="Index" class="btn btn-secondary">Zrušit</a>
+    </form>
+</div>

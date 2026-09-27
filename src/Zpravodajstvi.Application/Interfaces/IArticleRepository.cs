@@ -8,4 +8,10 @@ public interface IArticleRepository
     Task<Article?> GetByIdWithDetailsAsync(int id);
     Task<IEnumerable<Category>> GetCategoriesAsync();
     Task<bool> ExistsAsync(int id);
+    Task<Article> AddAsync(Article article);
+    Task<Category> AddCategoryAsync(Category category);
+    Task UpdateAsync(Article article);
+    Task DeleteAsync(int id);
+    Task<Category?> GetCategoryByIdAsync(int id);
+    Task DeleteCategoryAsync(int id);
 }

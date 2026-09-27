@@ -8,8 +8,8 @@
         <!-- Tlačítko zpět -->
         <a asp-action="Index" class="btn btn-outline-secondary btn-sm mb-4">← Zpět na přehled zpráv</a>
 
-        <!-- Hlavička článku -->
-        <article class="bg-white p-4 p-md-5 rounded shadow-sm mb-5">
+        <!-- Hlavička a obsah článku -->
+        <article class="card p-4 p-md-5 rounded shadow-sm mb-5 border-0">
             <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
                 <span class="badge bg-primary fs-6">@Model.CategoryName</span>
                 <span class="text-muted small">Publikováno: @Model.CreatedAt.ToString("d. M. yyyy v HH:mm")</span>
@@ -19,7 +19,7 @@
                 }
             </div>
 
-            <h1 class="display-6 fw-bold mb-3">@Model.Title</h1>
+            <h1 class="display-6 fw-bold mb-3 text-body">@Model.Title</h1>
 
             <!-- Perex -->
             <p class="lead text-secondary border-start border-4 border-primary ps-3 my-4">
@@ -36,7 +36,7 @@
                             <img src="@img.Url" class="figure-img img-fluid rounded w-100 shadow-sm" alt="@img.Caption" style="max-height: 480px; object-fit: cover;" />
                             @if (!string.IsNullOrEmpty(img.Caption))
                             {
-                                <figcaption class="figure-caption text-center mt-2">📷 @img.Caption</figcaption>
+                                <figcaption class="figure-caption text-center mt-2 text-muted">📷 @img.Caption</figcaption>
                             }
                         </figure>
                     }
@@ -44,7 +44,7 @@
             }
 
             <!-- Plný text článku -->
-            <div class="article-content fs-5 lh-lg my-4 text-dark" style="white-space: pre-line;">
+            <div class="article-content fs-5 lh-lg my-4 text-body" style="white-space: pre-line;">
                 @Model.Content
             </div>
 
@@ -64,9 +64,9 @@
         </article>
 
         <!-- Sekce komentářů -->
-        <section id="comments" class="bg-white p-4 p-md-5 rounded shadow-sm">
+        <section id="comments" class="card p-4 p-md-5 rounded shadow-sm border-0">
             <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-                <h3 class="fw-bold mb-0">💬 Diskuze k článku (@Model.Comments.Count)</h3>
+                <h3 class="fw-bold mb-0 text-body">💬 Diskuze k článku (@Model.Comments.Count)</h3>
             </div>
 
             @if (TempData["SuccessMessage"] != null)
@@ -78,22 +78,23 @@
             }
 
             <!-- Formulář pro přidání komentáře -->
-            <div class="card bg-light border-0 mb-4 p-3 p-md-4">
+            <div class="card bg-body-tertiary border-0 mb-4 p-3 p-md-4">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
-                    <h5 class="fw-bold mb-3">Přidat komentář</h5>
+                    <h5 class="fw-bold mb-3 text-body">Přidat komentář</h5>
                     <form asp-controller="Comments" asp-action="Add" method="post">
                         <input type="hidden" asp-for="NewComment.ArticleId" value="@Model.Id" />
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
                         <div class="mb-3">
-                            <label asp-for="NewComment.AuthorName" class="form-label fw-semibold"></label>
-                            <input asp-for="NewComment.AuthorName" class="form-control" />
+                            <label asp-for="NewComment.AuthorName" class="form-label fw-semibold text-body"></label>
+                            <input asp-for="NewComment.AuthorName" class="form-control" readonly="readonly" />
+                            <small class="form-text text-muted">Jméno autora je svázáno s vaším účtem a nelze ho měnit.</small>
                             <span asp-validation-for="NewComment.AuthorName" class="text-danger small"></span>
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="NewComment.Content" class="form-label fw-semibold"></label>
+                            <label asp-for="NewComment.Content" class="form-label fw-semibold text-body"></label>
                             <textarea asp-for="NewComment.Content" class="form-control" rows="4" placeholder="Napište svůj názor k článku (vulgární výrazy budou zablokovány)..."></textarea>
                             <span asp-validation-for="NewComment.Content" class="text-danger small"></span>
                         </div>
@@ -107,7 +108,7 @@
                 else
                 {
                     <div class="text-center py-3">
-                        <h5 class="fw-bold mb-2">Zapojte se do diskuze</h5>
+                        <h5 class="fw-bold mb-2 text-body">Zapojte se do diskuze</h5>
                         <p class="text-muted mb-3">Pro přidávání komentářů je vyžadováno přihlášení s rolí Čtenář.</p>
                         <a asp-controller="Account" asp-action="Login" asp-route-returnurl="@Context.Request.Path" class="btn btn-primary me-2">Přihlásit se</a>
                         <a asp-controller="Account" asp-action="Register" asp-route-returnurl="@Context.Request.Path" class="btn btn-outline-primary">Registrovat se</a>
@@ -127,9 +128,9 @@
                 <div class="d-flex flex-column gap-3">
                     @foreach (var comment in Model.Comments)
                     {
-                        <div class="border rounded p-3 bg-white">
+                        <div class="card border rounded p-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-bold text-dark">👤 @comment.AuthorName</span>
+                                <span class="fw-bold text-body">👤 @comment.AuthorName</span>
                                 <small class="text-muted">@comment.CreatedAt.ToString("d. M. yyyy v HH:mm")</small>
                             </div>
                             <p class="mb-0 text-secondary" style="white-space: pre-line;">@comment.Content</p>

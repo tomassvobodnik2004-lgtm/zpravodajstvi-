@@ -1,0 +1,76 @@
+@model IEnumerable<Zpravodajstvi.Presentation.Areas.Admin.Models.UserViewModel>
+
+<div class="container mt-4">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Správa uživatelských účtů</h2>
+        <div>
+            <a asp-area="Admin" asp-controller="Article" asp-action="Index" class="btn btn-outline-secondary me-2">
+                📰 Správa článků
+            </a>
+            <a asp-area="Admin" asp-controller="Category" asp-action="Index" class="btn btn-outline-secondary">
+                📁 Správa kategorií
+            </a>
+        </div>
+    </div>
+
+    <table class="table table-striped table-bordered align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>Jméno</th>
+                <th>E-mail</th>
+                <th>Role</th>
+                <th>Datum registrace</th>
+                <th>Akce</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                foreach (var user in Model)
+                {
+                    <tr>
+                        <td><strong>@user.FullName</strong></td>
+                        <td>@user.Email</td>
+                        <td>
+                            @if (user.CurrentRole == "Admin")
+                            {
+                                <span class="badge bg-danger fs-6">Admin</span>
+                            }
+                            else if (user.CurrentRole == "Redaktor")
+                            {
+                                <span class="badge bg-warning text-dark fs-6">Redaktor</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-info text-dark fs-6">@user.CurrentRole</span>
+                            }
+                        </td>
+                        <td>@user.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>
+                            <a asp-area="Admin" asp-controller="User" asp-action="Edit" asp-route-id="@user.Id" class="btn btn-sm btn-warning me-1">
+                                ✏️ Upravit účet
+                            </a>
+                            <form asp-area="Admin" asp-controller="User" asp-action="Delete" asp-route-id="@user.Id" method="post" class="d-inline" onsubmit="return confirm('Opravdu chcete smazat tento účet?');">
+                                <button type="submit" class="btn btn-sm btn-danger">Smazat</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="5" class="text-center">Nebyly nalezeni žádní uživatelé.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

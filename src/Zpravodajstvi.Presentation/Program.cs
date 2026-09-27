@@ -1,12 +1,20 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 using Zpravodajstvi.Application.Interfaces;
 using Zpravodajstvi.Application.Services;
 using Zpravodajstvi.Infrastructure.Data;
 using Zpravodajstvi.Infrastructure.Identity;
 using Zpravodajstvi.Infrastructure.Repositories;
 
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console()
+    .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseSerilog();
 
 // 1. Konfigurace databáze SQLite
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
@@ -41,6 +49,7 @@ builder.Services.AddScoped<IArticleRepository, ArticleRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<IArticleService, ArticleService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 // 4. Přidání MVC kontrolerů a pohledů
 builder.Services.AddControllersWithViews();

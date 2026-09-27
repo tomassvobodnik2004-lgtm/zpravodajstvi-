@@ -71,4 +71,51 @@ public class ArticleRepository : IArticleRepository
     {
         return await _context.Articles.AnyAsync(a => a.Id == id);
     }
+
+    public async Task<Article> AddAsync(Article article)
+    {
+        await _context.Articles.AddAsync(article);
+        await _context.SaveChangesAsync();
+        return article;
+    }
+
+    public async Task<Category> AddCategoryAsync(Category category)
+    {
+        await _context.Categories.AddAsync(category);
+        await _context.SaveChangesAsync();
+        return category;
+    }
+
+    public async Task UpdateAsync(Article article)
+    {
+        _context.Articles.Update(article);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(int id)
+    {
+        var article = await _context.Articles.FindAsync(id);
+        if (article != null)
+        {
+            _context.Articles.Remove(article);
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task<Category?> GetCategoryByIdAsync(int id)
+    {
+        return await _context.Categories
+            .Include(c => c.Articles)
+            .FirstOrDefaultAsync(c => c.Id == id);
+    }
+
+    public async Task DeleteCategoryAsync(int id)
+    {
+        var category = await _context.Categories.FindAsync(id);
+        if (category != null)
+        {
+            _context.Categories.Remove(category);
+            await _context.SaveChangesAsync();
+        }
+    }
 }

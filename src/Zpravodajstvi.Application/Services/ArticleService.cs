@@ -1,5 +1,6 @@
 using Zpravodajstvi.Application.DTOs;
 using Zpravodajstvi.Application.Interfaces;
+using Zpravodajstvi.Domain.Entities;
 
 namespace Zpravodajstvi.Application.Services;
 
@@ -81,5 +82,82 @@ public class ArticleService : IArticleService
             Name = c.Name,
             ArticlesCount = c.Articles?.Count ?? 0
         });
+    }
+
+    public async Task<ArticleDetailDto> CreateArticleAsync(CreateArticleDto dto)
+    {
+        var perex = !string.IsNullOrWhiteSpace(dto.Perex) 
+            ? dto.Perex 
+            : (dto.Content.Length > 150 ? dto.Content[..150] + "..." : dto.Content);
+
+        var article = new Article
+        {
+            Title = dto.Title,
+            Perex = perex,
+            Content = dto.Content,
+            CategoryId = dto.CategoryId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        if (!string.IsNullOrWhiteSpace(dto.ImageUrl))
+        {
+            article.Images = new List<Image>
+            {
+                new Image
+                {
+                    Url = dto.ImageUrl,
+                    Caption = dto.ImageCaption ?? dto.Title
+                }
+            };
+        }
+
+        var createdArticle = await _articleRepository.AddAsync(article);
+
+        return new ArticleDetailDto
+        {
+            Id = createdArticle.Id,
+            Title = createdArticle.Title,
+            Perex = createdArticle.Perex,
+            Content = createdArticle.Content,
+            CategoryId = createdArticle.CategoryId,
+            CreatedAt = createdArticle.CreatedAt
+        };
+    }
+
+    public async Task UpdateArticleAsync(int id, string title, string content, int categoryId, string? imageUrl = null)
+    {
+        var article = await _articleRepository.GetByIdWithDetailsAsync(id);
+        if (article == null)
+        {
+            throw new KeyNotFoundException($"Článek s ID {id} nebyl nalezen.");
+        }
+
+        article.Title = title;
+        article.Content = content;
+        article.Perex = content.Length > 150 ? content[..150] + "..." : content;
+        article.CategoryId = categoryId;
+        article.UpdatedAt = DateTime.UtcNow;
+
+        if (!string.IsNullOrWhiteSpace(imageUrl))
+        {
+            if (article.Images == null)
+            {
+                article.Images = new List<Image>();
+            }
+
+            article.Images.Add(new Image
+            {
+                Url = imageUrl,
+                Caption = title,
+                ArticleId = article.Id
+            });
+        }
+
+        await _articleRepository.UpdateAsync(article);
+    }
+
+    public async Task DeleteArticleAsync(int id)
+    {
+        await _articleRepository.DeleteAsync(id);
     }
 }

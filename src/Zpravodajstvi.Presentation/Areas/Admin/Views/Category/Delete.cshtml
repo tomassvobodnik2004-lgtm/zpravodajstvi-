@@ -1,0 +1,18 @@
+@model Zpravodajstvi.Application.DTOs.CategoryDto
+
+<div class="container mt-4">
+    <h2>Opravdu chcete smazat tuto kategorii?</h2>
+    
+    <div class="alert alert-danger mt-3 shadow-sm">
+        <h4 class="alert-heading">📁 @Model.Name</h4>
+        <p class="mb-1"><strong>ID kategorie:</strong> @Model.Id | <strong>Počet navázaných článků:</strong> @Model.ArticlesCount</p>
+        <hr />
+        <p class="mb-0 text-muted">Smazáním kategorie mohou zůstat články bez přiřazené rubriky. Tuto akci nelze vzít zpět.</p>
+    </div>
+    
+    <form asp-area="Admin" asp-controller="Category" asp-action="Delete" method="post">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger me-2">Ano, trvale smazat</button>
+        <a asp-area="Admin" asp-controller="Category" asp-action="Index" class="btn btn-secondary">Zrušit</a>
+    </form>
+</div>

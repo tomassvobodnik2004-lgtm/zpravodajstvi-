@@ -1,0 +1,53 @@
+@model IEnumerable<Zpravodajstvi.Application.DTOs.ArticleListDto>
+
+<div class="container mt-4">
+    <h2>Správa článků</h2>
+    <div class="mb-3">
+        <a asp-area="Admin" asp-controller="Article" asp-action="Create" class="btn btn-primary">
+            + Přidat nový článek
+        </a>
+        <a asp-area="Admin" asp-controller="Category" asp-action="Index" class="btn btn-outline-secondary ms-2">
+            📁 Správa kategorií
+        </a>
+        @if (User.IsInRole("Admin"))
+        {
+            <a asp-area="Admin" asp-controller="User" asp-action="Index" class="btn btn-outline-dark ms-2">
+                👥 Správa účtů
+            </a>
+        }
+    </div>
+
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Titulek</th>
+                <th>Datum vytvoření</th>
+                <th>Akce</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                foreach (var article in Model)
+                {
+                    <tr>
+                        <td>@article.Id</td>
+                        <td>@article.Title</td>
+                        <td>@article.CreatedAt.ToShortDateString()</td>
+                        <td>
+                            <a asp-area="Admin" asp-controller="Article" asp-action="Edit" asp-route-id="@article.Id" class="btn btn-sm btn-warning">Upravit</a>
+                            <a asp-area="Admin" asp-controller="Article" asp-action="Delete" asp-route-id="@article.Id" class="btn btn-sm btn-danger">Smazat</a>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="4" class="text-center">Zatím nebyly vytvořeny žádné články.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

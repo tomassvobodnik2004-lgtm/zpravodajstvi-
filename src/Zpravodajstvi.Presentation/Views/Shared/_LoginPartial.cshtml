@@ -11,10 +11,10 @@
     var roles = currentUser != null ? await UserManager.GetRolesAsync(currentUser) : new List<string>();
     var primaryRole = roles.FirstOrDefault() ?? "Uživatel";
 
-    @if (User.IsInRole(DbInitializer.RoleAdmin))
+    @if (User.IsInRole(DbInitializer.RoleAdmin) || User.IsInRole(DbInitializer.RoleRedaktor))
     {
         <li class="nav-item me-2">
-            <a class="btn btn-sm btn-outline-warning text-dark fw-bold" asp-area="Admin" asp-controller="Home" asp-action="Index">
+            <a class="btn btn-sm btn-warning text-dark fw-bold" asp-area="Admin" asp-controller="Article" asp-action="Index">
                 ⚙️ Administrace
             </a>
         </li>
@@ -22,7 +22,7 @@
 
     <li class="nav-item me-2">
         <span class="badge bg-primary text-uppercase me-1">@primaryRole</span>
-        <span class="text-dark fw-semibold">@(currentUser?.FullName ?? User.Identity?.Name)</span>
+        <span class="text-white fw-semibold">@(currentUser?.FullName ?? User.Identity?.Name)</span>
     </li>
     <li class="nav-item">
         <form class="form-inline" asp-area="" asp-controller="Account" asp-action="Logout" method="post">

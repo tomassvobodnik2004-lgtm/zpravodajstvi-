@@ -27,7 +27,7 @@ public class CommentsController : Controller
     [HttpPost]
     [Authorize(Roles = $"{DbInitializer.RoleCtenar},{DbInitializer.RoleRedaktor},{DbInitializer.RoleAdmin}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Add(CreateCommentDto model)
+    public async Task<IActionResult> Add([Bind(Prefix = "NewComment")] CreateCommentDto model)
     {
         // Pokud je uživatel přihlášen a jméno nezadal nebo chce použít své systémové, doplníme ho
         if (User?.Identity?.IsAuthenticated == true)
@@ -36,8 +36,13 @@ public class CommentsController : Controller
             if (user != null && string.IsNullOrWhiteSpace(model.AuthorName))
             {
                 model.AuthorName = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : (user.Email ?? "Čtenář");
-                ModelState.Remove(nameof(model.AuthorName));
             }
+        }
+
+        if (!string.IsNullOrWhiteSpace(model.AuthorName))
+        {
+            ModelState.Remove("AuthorName");
+            ModelState.Remove("NewComment.AuthorName");
         }
 
         if (!ModelState.IsValid)

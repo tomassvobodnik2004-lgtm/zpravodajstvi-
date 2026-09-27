@@ -43,3 +43,14 @@ public class CategoryDto
     public string Name { get; set; } = string.Empty;
     public int ArticlesCount { get; set; }
 }
+
+public class CreateArticleDto
+{
+    public string Title { get; set; } = string.Empty;
+    public string Perex { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public int CategoryId { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? ImageCaption { get; set; }
+}
+

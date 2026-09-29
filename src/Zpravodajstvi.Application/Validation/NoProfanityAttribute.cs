@@ -10,7 +10,7 @@ public class NoProfanityAttribute : ValidationAttribute, IClientModelValidator
     public static readonly string[] DefaultBannedWords =
     [
         "debil", "idiot", "kreten", "blbec", "hovno", "curak", "kokot",
-        "pica", "prdel", "fuck", "shit", "bitch", "spam"
+        "pica", "prdel", "fuck", "shit", "bitch", "spam", "picovina", "blbost", "hovadina", "blb", "blbka", "blbec", "blboun", "blbounka",
     ];
 
     public string[] BannedWords { get; }

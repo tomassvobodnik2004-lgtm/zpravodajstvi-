@@ -68,4 +68,52 @@ public class CommentsController : Controller
             return NotFound();
         }
     }
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> Edit(Updatecomment dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var userName = User.Identity?.Name ?? string.Empty;
+        var isAdmin = User.IsInRole("Admin");
+
+        try
+        {
+            await _commentService.UpdateCommentAsync(dto.Id, dto.Content, userName, isAdmin);
+            return RedirectToAction("Detail", "Home", new { id = dto.ArticleId });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> Delete(int id, int articleId)
+    {
+        var userName = User.Identity?.Name ?? string.Empty;
+        var isAdmin = User.IsInRole("Admin");
+
+        try
+        {
+            await _commentService.DeleteCommentAsync(id, userName, isAdmin);
+            return RedirectToAction("Detail", "Home", new { id = articleId });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
 }

@@ -58,5 +58,39 @@ public class CommentService : ICommentService
             CreatedAt = created.CreatedAt,
             ArticleId = created.ArticleId
         };
+
+    }
+    public async Task UpdateCommentAsync(int commentId, string content, string currentUserName, bool isAdmin)
+    {
+        var comment = await _commentRepository.GetByIdAsync(commentId);
+        if (comment == null)
+        {
+            throw new KeyNotFoundException($"Komentář s ID {commentId} nebyl nalezen.");
+        }
+
+        // Kontrola oprávnění: Admin může vše, ostatní jen své vlastní komentáře
+        if (!isAdmin && !string.Equals(comment.AuthorName, currentUserName, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new UnauthorizedAccessException("Nemáte oprávnění upravovat tento komentář.");
+        }
+
+        comment.Content = content.Trim();
+        await _commentRepository.UpdateAsync(comment);
+    }
+    public async Task DeleteCommentAsync(int commentId, string currentUserName, bool isAdmin)
+    {
+        var comment = await _commentRepository.GetByIdAsync(commentId);
+        if (comment == null)
+        {
+            throw new KeyNotFoundException($"Komentář s ID {commentId} nebyl nalezen.");
+        }
+
+        // Kontrola oprávnění: Admin může vše, ostatní jen své vlastní komentáře
+        if (!isAdmin && !string.Equals(comment.AuthorName, currentUserName, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new UnauthorizedAccessException("Nemáte oprávnění smazat tento komentář.");
+        }
+
+        await _commentRepository.DeleteAsync(comment);
     }
 }

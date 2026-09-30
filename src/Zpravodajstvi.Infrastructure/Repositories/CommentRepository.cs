@@ -29,4 +29,20 @@ public class CommentRepository : ICommentRepository
         await _context.SaveChangesAsync();
         return comment;
     }
+    public async Task<Comment> UpdateAsync(Comment comment)
+    {
+        _context.Comments.Update(comment);
+        await _context.SaveChangesAsync();
+        return comment;
+    }
+    public async Task<Comment> DeleteAsync(Comment comment)
+    {
+        _context.Comments.Remove(comment);
+        await _context.SaveChangesAsync();
+        return comment;
+    }
+    public async Task<Comment?> GetByIdAsync(int id)
+    {
+        return await _context.Comments.FindAsync(id);
+    }
 }

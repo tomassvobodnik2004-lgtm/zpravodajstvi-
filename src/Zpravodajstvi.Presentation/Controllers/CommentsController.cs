@@ -83,9 +83,28 @@ public class CommentsController : Controller
 
         try
         {
+            // 1. Načteme existující komentář pro kontrolu autorství
+            var comment = await _commentService.GetByIdAsync(id);
+            if (comment == null)
+            {
+                return NotFound();
+            }
+
+            // 2. KONTROLA OPRÁVNĚNÍ:
+            // Čtenář ani Redaktor nesmí upravit komentář, který nenapsali.
+            // Pokud chcete, aby ani Admin nemohl upravovat cizí komentáře, odeberte druhou část podmínky.
+            bool isOwner = comment.AuthorName == userName;
+            bool isAdmin = User.IsInRole("Admin") || User.IsInRole(DbInitializer.RoleAdmin);
+
+            if (!isOwner && !isAdmin)
+            {
+                return Forbid(); // Případně Unauthorized()
+            }
+
+            // 3. Provedení úpravy
             await _commentService.UpdateCommentAsync(id, content, userName, isAdmin);
-            TempData["SuccessMessage"] = "Komentář byl upraven.";
-            return RedirectToAction("Details", "Home", new { id = articleId });
+            TempData["SuccessMessage"] = "Komentář byl úspěšně upraven.";
+            return RedirectToAction("Details", "Home", new { id = articleId, fragment = $"comment-{id}" });
         }
         catch (UnauthorizedAccessException)
         {

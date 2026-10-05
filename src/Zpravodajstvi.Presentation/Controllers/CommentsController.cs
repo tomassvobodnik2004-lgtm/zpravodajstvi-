@@ -78,8 +78,9 @@ public class CommentsController : Controller
             return RedirectToAction("Details", "Home", new { id = articleId });
         }
 
-        var userName = User.Identity?.Name ?? string.Empty;
         var isAdmin = User.IsInRole("Admin") || User.IsInRole(DbInitializer.RoleAdmin);
+        var user = await _userManager.GetUserAsync(User);
+        var userName = user is not null ? (!string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : (user.Email ?? string.Empty)) : (User.Identity?.Name ?? string.Empty);
 
         try
         {

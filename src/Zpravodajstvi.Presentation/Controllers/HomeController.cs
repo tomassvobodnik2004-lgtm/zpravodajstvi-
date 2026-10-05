@@ -47,6 +47,8 @@ public class HomeController : Controller
             if (user != null)
             {
                 article.NewComment.AuthorName = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : (user.Email ?? string.Empty);
+                // Předáme do view i aktuální zobrazené jméno uživatele — používané při porovnání s AuthorName u komentářů
+                article.CurrentUserName = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : (user.Email ?? string.Empty);
             }
         }
 

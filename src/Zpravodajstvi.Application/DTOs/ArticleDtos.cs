@@ -28,6 +28,8 @@ public class ArticleDetailDto
     public List<CommentDto> Comments { get; set; } = new();
 
     public CreateCommentDto NewComment { get; set; } = new();
+    // Jméno přihlášeného uživatele (pomocné pole pro zobrazení tlačítek u komentářů)
+    public string? CurrentUserName { get; set; }
 }
 
 public class ImageDto

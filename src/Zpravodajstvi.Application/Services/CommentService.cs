@@ -68,7 +68,7 @@ public class CommentService : ICommentService
             throw new KeyNotFoundException($"Komentář s ID {commentId} nebyl nalezen.");
         }
 
-        // Kontrola oprávnění: Admin může vše, ostatní jen své vlastní komentáře
+        // Kontrola oprávnění: Admin může vše, ostatní jen své vlastní komentáře porovnáním jména
         if (!isAdmin && !string.Equals(comment.AuthorName, currentUserName, StringComparison.OrdinalIgnoreCase))
         {
             throw new UnauthorizedAccessException("Nemáte oprávnění upravovat tento komentář.");
@@ -77,6 +77,7 @@ public class CommentService : ICommentService
         comment.Content = content.Trim();
         await _commentRepository.UpdateAsync(comment);
     }
+
     public async Task DeleteCommentAsync(int commentId, string currentUserName, bool isAdmin)
     {
         var comment = await _commentRepository.GetByIdAsync(commentId);
@@ -85,7 +86,7 @@ public class CommentService : ICommentService
             throw new KeyNotFoundException($"Komentář s ID {commentId} nebyl nalezen.");
         }
 
-        // Kontrola oprávnění: Admin může vše, ostatní jen své vlastní komentáře
+        // Kontrola oprávnění: Admin může vše, ostatní jen své vlastní komentáře porovnáním jména
         if (!isAdmin && !string.Equals(comment.AuthorName, currentUserName, StringComparison.OrdinalIgnoreCase))
         {
             throw new UnauthorizedAccessException("Nemáte oprávnění smazat tento komentář.");

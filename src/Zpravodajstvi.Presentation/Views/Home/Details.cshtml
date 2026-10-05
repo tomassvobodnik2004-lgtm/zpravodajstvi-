@@ -137,7 +137,7 @@
                                 </div>
 
                                 @* Tlačítka se zobrazí pouze Adminovi nebo autorovi komentáře *@
-                                @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || comment.AuthorId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value))
+                                @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || string.Equals(comment.AuthorName?.Trim(), User.Identity.Name?.Trim(), StringComparison.OrdinalIgnoreCase) || string.Equals(comment.AuthorName?.Trim(), Model.CurrentUserName?.Trim(), StringComparison.OrdinalIgnoreCase)))
                                 {
                                     <div class="btn-group btn-group-sm">
                                         <!-- Tlačítko pro rozbalení formuláře na úpravu -->
@@ -159,7 +159,7 @@
 
                             @* Editační formulář (rozbalí se pod komentářem) *@
                             @if (User.Identity?.IsAuthenticated == true &&
-    (User.IsInRole("Admin") || comment.AuthorId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value))
+    (User.IsInRole("Admin") || string.Equals(comment.AuthorName?.Trim(), User.Identity.Name?.Trim(), StringComparison.OrdinalIgnoreCase) || string.Equals(comment.AuthorName?.Trim(), Model.CurrentUserName?.Trim(), StringComparison.OrdinalIgnoreCase)))
                             {
                                 <div class="collapse mt-3 pt-3 border-top" id="editComment-@comment.Id">
                                     <form asp-controller="Comments" asp-action="Edit" method="post">

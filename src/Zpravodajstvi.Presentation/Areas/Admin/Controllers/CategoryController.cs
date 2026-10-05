@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Zpravodajstvi.Domain.Interfaces;
+using Zpravodajstvi.Application.Interfaces;
 using Zpravodajstvi.Infrastructure.Data;
 
 namespace Zpravodajstvi.Presentation.Areas.Admin.Controllers;

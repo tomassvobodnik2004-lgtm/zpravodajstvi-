@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Zpravodajstvi.Application.DTOs;
 using Zpravodajstvi.Domain.Interfaces;
+using Zpravodajstvi.Application.Interfaces;
 using Zpravodajstvi.Infrastructure.Data;
 using Zpravodajstvi.Infrastructure.Identity;
 

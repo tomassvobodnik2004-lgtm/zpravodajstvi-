@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Zpravodajstvi.Domain.Interfaces;
+using Zpravodajstvi.Application.Interfaces;
 using Zpravodajstvi.Infrastructure.Identity;
 using Zpravodajstvi.Presentation.Models;
 

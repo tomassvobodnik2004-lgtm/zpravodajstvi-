@@ -4,6 +4,7 @@ using Zpravodajstvi.Application.DTOs;
 using Zpravodajstvi.Application.Interfaces;
 using Zpravodajstvi.Application.Services;
 using Zpravodajstvi.Domain.Entities;
+using Zpravodajstvi.Domain.Interfaces;
 
 namespace Zpravodajstvi.Tests.ServicesTests;
 

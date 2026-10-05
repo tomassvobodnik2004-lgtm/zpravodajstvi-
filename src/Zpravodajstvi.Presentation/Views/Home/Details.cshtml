@@ -1,4 +1,5 @@
 @model Zpravodajstvi.Application.DTOs.ArticleDetailDto
+@using System.Security.Claims
 @{
     ViewData["Title"] = Model.Title;
 }
@@ -136,7 +137,7 @@
                                 </div>
 
                                 @* Tlačítka se zobrazí pouze Adminovi nebo autorovi komentáře *@
-                                @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || User.Identity.Name == comment.AuthorName))
+                                @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || comment.AuthorId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value))
                                 {
                                     <div class="btn-group btn-group-sm">
                                         <!-- Tlačítko pro rozbalení formuláře na úpravu -->
@@ -157,7 +158,8 @@
                             <p class="mb-0 text-secondary" style="white-space: pre-line;">@comment.Content</p>
 
                             @* Editační formulář (rozbalí se pod komentářem) *@
-                            @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || User.Identity.Name == comment.AuthorName))
+                            @if (User.Identity?.IsAuthenticated == true &&
+    (User.IsInRole("Admin") || comment.AuthorId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value))
                             {
                                 <div class="collapse mt-3 pt-3 border-top" id="editComment-@comment.Id">
                                     <form asp-controller="Comments" asp-action="Edit" method="post">

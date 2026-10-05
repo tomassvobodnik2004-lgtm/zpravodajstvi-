@@ -70,20 +70,22 @@ public class CommentsController : Controller
     }
     [HttpPost]
     [Authorize]
-    public async Task<IActionResult> Edit(Updatecomment dto)
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(int id, int articleId, string content)
     {
-        if (!ModelState.IsValid)
+        if (string.IsNullOrWhiteSpace(content))
         {
-            return BadRequest(ModelState);
+            return RedirectToAction("Details", "Home", new { id = articleId });
         }
 
         var userName = User.Identity?.Name ?? string.Empty;
-        var isAdmin = User.IsInRole("Admin");
+        var isAdmin = User.IsInRole("Admin") || User.IsInRole(DbInitializer.RoleAdmin);
 
         try
         {
-            await _commentService.UpdateCommentAsync(dto.Id, dto.Content, userName, isAdmin);
-            return RedirectToAction("Detail", "Home", new { id = dto.ArticleId });
+            await _commentService.UpdateCommentAsync(id, content, userName, isAdmin);
+            TempData["SuccessMessage"] = "Komentář byl upraven.";
+            return RedirectToAction("Details", "Home", new { id = articleId });
         }
         catch (UnauthorizedAccessException)
         {
@@ -97,15 +99,17 @@ public class CommentsController : Controller
 
     [HttpPost]
     [Authorize]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id, int articleId)
     {
         var userName = User.Identity?.Name ?? string.Empty;
-        var isAdmin = User.IsInRole("Admin");
+        var isAdmin = User.IsInRole("Admin") || User.IsInRole(DbInitializer.RoleAdmin);
 
         try
         {
             await _commentService.DeleteCommentAsync(id, userName, isAdmin);
-            return RedirectToAction("Detail", "Home", new { id = articleId });
+            TempData["SuccessMessage"] = "Komentář byl smazán.";
+            return RedirectToAction("Details", "Home", new { id = articleId });
         }
         catch (UnauthorizedAccessException)
         {
@@ -116,4 +120,5 @@ public class CommentsController : Controller
             return NotFound();
         }
     }
+}
 }

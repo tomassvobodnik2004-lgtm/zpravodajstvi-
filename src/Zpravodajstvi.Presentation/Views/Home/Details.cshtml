@@ -130,10 +130,50 @@
                     {
                         <div class="card border rounded p-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-bold text-body">👤 @comment.AuthorName</span>
-                                <small class="text-muted">@comment.CreatedAt.ToString("d. M. yyyy v HH:mm")</small>
+                                <div>
+                                    <span class="fw-bold text-body">👤 @comment.AuthorName</span>
+                                    <small class="text-muted ms-2">@comment.CreatedAt.ToString("d. M. yyyy v HH:mm")</small>
+                                </div>
+
+                                @* Tlačítka se zobrazí pouze Adminovi nebo autorovi komentáře *@
+                                @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || User.Identity.Name == comment.AuthorName))
+                                {
+                                    <div class="btn-group btn-group-sm">
+                                        <!-- Tlačítko pro rozbalení formuláře na úpravu -->
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#editComment-@comment.Id">
+                                            ✏️ Upravit
+                                        </button>
+
+                                        <!-- Formulář pro smazání -->
+                                        <form asp-controller="Comments" asp-action="Delete" method="post" onsubmit="return confirm('Opravdu chcete smazat tento komentář?');" class="d-inline">
+                                            <input type="hidden" name="id" value="@comment.Id" />
+                                            <input type="hidden" name="articleId" value="@Model.Id" />
+                                            <button type="submit" class="btn btn-outline-danger">🗑️ Smazat</button>
+                                        </form>
+                                    </div>
+                                }
                             </div>
+
                             <p class="mb-0 text-secondary" style="white-space: pre-line;">@comment.Content</p>
+
+                            @* Editační formulář (rozbalí se pod komentářem) *@
+                            @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || User.Identity.Name == comment.AuthorName))
+                            {
+                                <div class="collapse mt-3 pt-3 border-top" id="editComment-@comment.Id">
+                                    <form asp-controller="Comments" asp-action="Edit" method="post">
+                                        <input type="hidden" name="Id" value="@comment.Id" />
+                                        <input type="hidden" name="ArticleId" value="@Model.Id" />
+                                        <div class="mb-2">
+                                            <label class="form-label fw-semibold small">Úprava komentáře:</label>
+                                            <textarea name="Content" class="form-control" rows="3" required>@comment.Content</textarea>
+                                        </div>
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <button type="button" class="btn btn-sm btn-light" data-bs-toggle="collapse" data-bs-target="#editComment-@comment.Id">Zrušit</button>
+                                            <button type="submit" class="btn btn-sm btn-primary">Uložit změny</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            }
                         </div>
                     }
                 </div>

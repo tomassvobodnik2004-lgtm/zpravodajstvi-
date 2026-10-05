@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.Logging;
 using Zpravodajstvi.Application.DTOs;
-using Zpravodajstvi.Application.Interfaces;
+using Zpravodajstvi.Domain.Interfaces;
 using Zpravodajstvi.Presentation.Areas.Admin.Models;
 
 using Microsoft.AspNetCore.Authorization;

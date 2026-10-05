@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Zpravodajstvi.Application.Interfaces;
+using Zpravodajstvi.Domain.Interfaces;
 using Zpravodajstvi.Domain.Entities;
 using Zpravodajstvi.Infrastructure.Data;
 

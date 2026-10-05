@@ -1,5 +1,5 @@
 using Zpravodajstvi.Application.DTOs;
-using Zpravodajstvi.Application.Interfaces;
+using Zpravodajstvi.Domain.Interfaces;
 using Zpravodajstvi.Domain.Entities;
 
 namespace Zpravodajstvi.Application.Services;

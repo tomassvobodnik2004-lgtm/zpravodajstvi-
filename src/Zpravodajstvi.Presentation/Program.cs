@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Zpravodajstvi.Application.Interfaces;
+using Zpravodajstvi.Domain.Interfaces;
 using Zpravodajstvi.Application.Services;
 using Zpravodajstvi.Infrastructure.Data;
 using Zpravodajstvi.Infrastructure.Identity;

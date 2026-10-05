@@ -1,7 +1,6 @@
-using Zpravodajstvi.Application.DTOs;
 using Zpravodajstvi.Domain.Entities;
 
-namespace Zpravodajstvi.Application.Interfaces;
+namespace Zpravodajstvi.Domain.Interfaces;
 
 public interface ICommentRepository
 {

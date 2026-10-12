@@ -7,6 +7,10 @@ public class Comment
     public string Content { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // Cizí klíč na autora (uživatel Identity) – podle něj se pozná vlastník komentáře.
+    // Null = autora nelze určit, takový komentář může upravit nebo smazat jen administrátor.
+    public string? UserId { get; set; }
+
     // Cizí klíč a navigační vlastnost pro článek
     public int ArticleId { get; set; }
     public Article Article { get; set; } = null!;

@@ -9,6 +9,12 @@ public class Article
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
+    // Normalizované kopie textů pro vyhledávání (malá písmena, bez diakritiky).
+    // Vyplňuje je ApplicationDbContext při každém uložení článku.
+    public string SearchTitle { get; set; } = string.Empty;
+    public string SearchPerex { get; set; } = string.Empty;
+    public string SearchContent { get; set; } = string.Empty;
+
     // Cizí klíč a navigační vlastnost pro kategorii
     public int CategoryId { get; set; }
     public Category Category { get; set; } = null!;

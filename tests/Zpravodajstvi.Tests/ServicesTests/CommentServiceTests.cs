@@ -26,7 +26,6 @@ public class CommentServiceTests
         var dto = new CreateCommentDto
         {
             ArticleId = 1,
-            AuthorName = "Petr Čtenář",
             Content = "Velmi zajímavý příspěvek."
         };
 
@@ -43,17 +42,18 @@ public class CommentServiceTests
             });
 
         // Act
-        var result = await _service.AddCommentAsync(dto);
+        var result = await _service.AddCommentAsync(dto, "user-1", "Petr Čtenář");
 
         // Assert
         Assert.NotNull(result);
         Assert.Equal(10, result.Id);
         Assert.Equal("Petr Čtenář", result.AuthorName);
+        Assert.Equal("user-1", result.UserId);
         Assert.Equal("Velmi zajímavý příspěvek.", result.Content);
         Assert.Equal(1, result.ArticleId);
 
         _articleRepoMock.Verify(r => r.ExistsAsync(1), Times.Once);
-        _commentRepoMock.Verify(r => r.AddAsync(It.Is<Comment>(c => c.ArticleId == 1 && c.AuthorName == "Petr Čtenář")), Times.Once);
+        _commentRepoMock.Verify(r => r.AddAsync(It.Is<Comment>(c => c.ArticleId == 1 && c.AuthorName == "Petr Čtenář" && c.UserId == "user-1")), Times.Once);
     }
 
     [Fact]
@@ -63,7 +63,6 @@ public class CommentServiceTests
         var dto = new CreateCommentDto
         {
             ArticleId = 999,
-            AuthorName = "Neznámý",
             Content = "Testovací komentář k neexistujícímu článku."
         };
 
@@ -72,7 +71,7 @@ public class CommentServiceTests
             .ReturnsAsync(false);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.AddCommentAsync(dto));
+        var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.AddCommentAsync(dto, "user-1", "Neznámý"));
         Assert.Contains("999", exception.Message);
 
         _commentRepoMock.Verify(r => r.AddAsync(It.IsAny<Comment>()), Times.Never);
@@ -99,5 +98,61 @@ public class CommentServiceTests
         Assert.Equal(2, result.Count);
         Assert.Equal(2, result[0].Id); // Novější komentář musí být první
         Assert.Equal(1, result[1].Id);
+    }
+
+    [Fact]
+    public async Task UpdateCommentAsync_Owner_UpdatesContent()
+    {
+        // Arrange
+        var comment = new Comment { Id = 5, ArticleId = 1, AuthorName = "Petr Čtenář", UserId = "user-1", Content = "Původní text" };
+        _commentRepoMock.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(comment);
+
+        // Act
+        await _service.UpdateCommentAsync(5, "  Nový text  ", "user-1", isAdmin: false);
+
+        // Assert
+        Assert.Equal("Nový text", comment.Content);
+        _commentRepoMock.Verify(r => r.UpdateAsync(comment), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateCommentAsync_OtherUserWithSameFullName_ThrowsUnauthorizedAccessException()
+    {
+        // Arrange – dva různé účty se stejným jménem, vlastník se určuje podle UserId
+        var comment = new Comment { Id = 5, ArticleId = 1, AuthorName = "Jan Novák", UserId = "user-1", Content = "Původní text" };
+        _commentRepoMock.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(comment);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _service.UpdateCommentAsync(5, "Cizí úprava", "user-2", isAdmin: false));
+        Assert.Equal("Původní text", comment.Content);
+        _commentRepoMock.Verify(r => r.UpdateAsync(It.IsAny<Comment>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteCommentAsync_Owner_DeletesComment()
+    {
+        // Arrange
+        var comment = new Comment { Id = 5, ArticleId = 1, AuthorName = "Petr Čtenář", UserId = "user-1" };
+        _commentRepoMock.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(comment);
+
+        // Act
+        await _service.DeleteCommentAsync(5, "user-1", isAdmin: false);
+
+        // Assert
+        _commentRepoMock.Verify(r => r.DeleteAsync(comment), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteCommentAsync_CommentWithoutUserId_OnlyAdminCanDelete()
+    {
+        // Arrange – starý komentář, u kterého migrace nedokázala jednoznačně určit autora
+        var comment = new Comment { Id = 6, ArticleId = 1, AuthorName = "Jan Redaktor", UserId = null };
+        _commentRepoMock.Setup(r => r.GetByIdAsync(6)).ReturnsAsync(comment);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _service.DeleteCommentAsync(6, "user-1", isAdmin: false));
+        await _service.DeleteCommentAsync(6, "admin-1", isAdmin: true);
+
+        _commentRepoMock.Verify(r => r.DeleteAsync(comment), Times.Once);
     }
 }

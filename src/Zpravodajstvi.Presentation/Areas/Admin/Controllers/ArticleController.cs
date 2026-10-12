@@ -49,6 +49,7 @@ public class ArticleController : Controller
 
     // Zpracuje odeslaný formulář
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(ArticleCreateViewModel model)
     {
         if (!ModelState.IsValid)
@@ -129,6 +130,7 @@ public class ArticleController : Controller
 
     // Zpracuje odeslané úpravy článku
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(ArticleEditViewModel model)
     {
         if (!ModelState.IsValid)

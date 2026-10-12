@@ -2,6 +2,8 @@
 @using System.Security.Claims
 @{
     ViewData["Title"] = Model.Title;
+    // Id přihlášeného uživatele – vlastník komentáře se pozná podle shody s comment.UserId
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 }
 
 <div class="row justify-content-center">
@@ -87,11 +89,11 @@
                         <input type="hidden" asp-for="NewComment.ArticleId" value="@Model.Id" />
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
+                        @* Jméno se jen zobrazuje (pole nemá atribut name, takže se neodesílá) – autora určuje server podle účtu *@
                         <div class="mb-3">
-                            <label asp-for="NewComment.AuthorName" class="form-label fw-semibold text-body"></label>
-                            <input asp-for="NewComment.AuthorName" class="form-control" readonly="readonly" />
+                            <label for="commentAuthorName" class="form-label fw-semibold text-body">Vaše jméno</label>
+                            <input id="commentAuthorName" class="form-control" value="@Model.CurrentUserName" readonly="readonly" />
                             <small class="form-text text-muted">Jméno autora je svázáno s vaším účtem a nelze ho měnit.</small>
-                            <span asp-validation-for="NewComment.AuthorName" class="text-danger small"></span>
                         </div>
 
                         <div class="mb-3">
@@ -129,6 +131,11 @@
                 <div class="d-flex flex-column gap-3">
                     @foreach (var comment in Model.Comments)
                     {
+                        // Spravovat komentář smí Admin nebo jeho autor – shoda Id uživatele, ne jména
+                        var canManage = User.IsInRole("Admin") || (comment.UserId != null && comment.UserId == currentUserId);
+                        // Úprava tohoto komentáře neprošla validací – formulář zůstane otevřený s chybou
+                        var failedEdit = Model.EditComment?.Id == comment.Id ? Model.EditComment : null;
+
                         <div class="card border rounded p-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <div>
@@ -137,7 +144,7 @@
                                 </div>
 
                                 @* Tlačítka se zobrazí pouze Adminovi nebo autorovi komentáře *@
-                                @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || string.Equals(comment.AuthorName?.Trim(), User.Identity.Name?.Trim(), StringComparison.OrdinalIgnoreCase) || string.Equals(comment.AuthorName?.Trim(), Model.CurrentUserName?.Trim(), StringComparison.OrdinalIgnoreCase)))
+                                @if (canManage)
                                 {
                                     <div class="btn-group btn-group-sm">
                                         <!-- Tlačítko pro rozbalení formuláře na úpravu -->
@@ -157,17 +164,20 @@
 
                             <p class="mb-0 text-secondary" style="white-space: pre-line;">@comment.Content</p>
 
-                            @* Editační formulář (rozbalí se pod komentářem) *@
-                            @if (User.Identity?.IsAuthenticated == true &&
-    (User.IsInRole("Admin") || string.Equals(comment.AuthorName?.Trim(), User.Identity.Name?.Trim(), StringComparison.OrdinalIgnoreCase) || string.Equals(comment.AuthorName?.Trim(), Model.CurrentUserName?.Trim(), StringComparison.OrdinalIgnoreCase)))
+                            @* Editační formulář (rozbalí se pod komentářem, po chybě validace zůstane otevřený) *@
+                            @if (canManage)
                             {
-                                <div class="collapse mt-3 pt-3 border-top" id="editComment-@comment.Id">
+                                <div class="collapse mt-3 pt-3 border-top @(failedEdit != null ? "show" : "")" id="editComment-@comment.Id">
                                     <form asp-controller="Comments" asp-action="Edit" method="post">
-                                        <input type="hidden" name="id" value="@comment.Id" />
-                                        <input type="hidden" name="articleId" value="@Model.Id" />
+                                        <input type="hidden" name="EditComment.Id" value="@comment.Id" />
+                                        <input type="hidden" name="EditComment.ArticleId" value="@Model.Id" />
                                         <div class="mb-2">
                                             <label class="form-label fw-semibold small">Úprava komentáře:</label>
-                                            <textarea name="content" class="form-control" rows="3" required>@comment.Content</textarea>
+                                            <textarea name="EditComment.Content" class="form-control" rows="3" required>@(failedEdit?.Content ?? comment.Content)</textarea>
+                                            @if (failedEdit != null)
+                                            {
+                                                <span asp-validation-for="EditComment.Content" class="text-danger small"></span>
+                                            }
                                         </div>
                                         <div class="d-flex justify-content-end gap-2">
                                             <button type="button" class="btn btn-sm btn-light" data-bs-toggle="collapse" data-bs-target="#editComment-@comment.Id">Zrušit</button>

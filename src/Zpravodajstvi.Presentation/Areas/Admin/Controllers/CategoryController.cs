@@ -59,7 +59,27 @@ public class CategoryController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
+        // Vazba Category -> Article má DeleteBehavior.Restrict: rubriku s články databáze smazat nedovolí
+        // (SQLite Error 19), proto články zkontrolujeme předem a místo chyby 500 vrátíme srozumitelnou hlášku
+        var category = await _categoryService.GetCategoryByIdAsync(id);
+        if (category != null && category.ArticlesCount > 0)
+        {
+            ModelState.AddModelError(string.Empty, GetCategoryNotEmptyMessage(category.ArticlesCount));
+            return View(category);
+        }
+
         await _categoryService.DeleteCategoryAsync(id);
         return RedirectToAction(nameof(Index));
+    }
+
+    // "obsahuje 1 článek / 3 články / 5 článků" – české skloňování podle počtu
+    private static string GetCategoryNotEmptyMessage(int articlesCount)
+    {
+        return articlesCount switch
+        {
+            1 => "Rubriku nelze smazat, obsahuje 1 článek. Nejprve ho přesuňte nebo smažte.",
+            >= 2 and <= 4 => $"Rubriku nelze smazat, obsahuje {articlesCount} články. Nejprve je přesuňte nebo smažte.",
+            _ => $"Rubriku nelze smazat, obsahuje {articlesCount} článků. Nejprve je přesuňte nebo smažte."
+        };
     }
 }

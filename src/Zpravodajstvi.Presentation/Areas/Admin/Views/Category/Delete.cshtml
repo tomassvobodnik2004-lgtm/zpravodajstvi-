@@ -2,12 +2,15 @@
 
 <div class="container mt-4">
     <h2>Opravdu chcete smazat tuto kategorii?</h2>
-    
+
+    @* Chyba z DeleteConfirmed, např. když rubrika ještě obsahuje články *@
+    <div asp-validation-summary="ModelOnly" class="alert alert-warning mt-3" role="alert"></div>
+
     <div class="alert alert-danger mt-3 shadow-sm">
         <h4 class="alert-heading">📁 @Model.Name</h4>
         <p class="mb-1"><strong>ID kategorie:</strong> @Model.Id | <strong>Počet navázaných článků:</strong> @Model.ArticlesCount</p>
         <hr />
-        <p class="mb-0 text-muted">Smazáním kategorie mohou zůstat články bez přiřazené rubriky. Tuto akci nelze vzít zpět.</p>
+        <p class="mb-0 text-muted">Smazat lze jen kategorii bez článků. Tuto akci nelze vzít zpět.</p>
     </div>
     
     <form asp-area="Admin" asp-controller="Category" asp-action="Delete" method="post">

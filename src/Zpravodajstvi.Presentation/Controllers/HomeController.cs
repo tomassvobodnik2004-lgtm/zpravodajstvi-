@@ -41,14 +41,13 @@ public class HomeController : Controller
             return NotFound();
         }
 
-        // Pokud je uživatel přihlášen, předvyplníme jeho jméno do formuláře komentáře
+        // Pokud je uživatel přihlášen, zobrazíme jeho jméno ve formuláři komentáře
+        // (jen pro informaci – autora komentáře při uložení určuje server podle účtu)
         if (User?.Identity?.IsAuthenticated == true)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user != null)
             {
-                article.NewComment.AuthorName = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : (user.Email ?? string.Empty);
-                // Předáme do view i aktuální zobrazené jméno uživatele — používané při porovnání s AuthorName u komentářů
                 article.CurrentUserName = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : (user.Email ?? string.Empty);
             }
         }

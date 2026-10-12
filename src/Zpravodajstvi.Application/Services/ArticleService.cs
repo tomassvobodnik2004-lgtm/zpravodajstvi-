@@ -65,7 +65,8 @@ public class ArticleService : IArticleService
                     AuthorName = c.AuthorName,
                     Content = c.Content,
                     CreatedAt = c.CreatedAt,
-                    ArticleId = c.ArticleId
+                    ArticleId = c.ArticleId,
+                    UserId = c.UserId
                 }).ToList() ?? new List<CommentDto>(),
             NewComment = new CreateCommentDto
             {

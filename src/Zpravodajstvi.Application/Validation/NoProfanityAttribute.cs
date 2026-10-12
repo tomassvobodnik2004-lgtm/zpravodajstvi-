@@ -82,9 +82,10 @@ public class NoProfanityAttribute : ValidationAttribute, IClientModelValidator
         foreach (var word in BannedWords)
         {
             var normalizedWord = RemoveDiacritics(word).ToLowerInvariant();
-            // Hledá celé slovo nebo výskyt v textu pomocí regex boundary nebo Contains
+            // Hledá jen celá slova (hranice \b), takže "sekundu" ani "operace" nejsou vulgární,
+            // i když obsahují zakázaný řetězec. \b v .NET bere jako písmena i znaky s diakritikou.
             var pattern = $@"\b{Regex.Escape(normalizedWord)}\b";
-            if (Regex.IsMatch(normalizedInput, pattern, RegexOptions.IgnoreCase) || normalizedInput.Contains(normalizedWord))
+            if (Regex.IsMatch(normalizedInput, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
             {
                 return true;
             }

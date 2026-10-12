@@ -28,7 +28,9 @@ public class ArticleDetailDto
     public List<CommentDto> Comments { get; set; } = new();
 
     public CreateCommentDto NewComment { get; set; } = new();
-    // Jméno přihlášeného uživatele (pomocné pole pro zobrazení tlačítek u komentářů)
+    // Úprava komentáře, která neprošla validací – view u ní znovu otevře formulář s chybou
+    public UpdateComment? EditComment { get; set; }
+    // Jméno přihlášeného uživatele (jen pro zobrazení ve formuláři komentáře, autora určuje server)
     public string? CurrentUserName { get; set; }
 }
 

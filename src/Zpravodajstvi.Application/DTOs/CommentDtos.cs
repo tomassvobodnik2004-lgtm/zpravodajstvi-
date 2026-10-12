@@ -3,15 +3,11 @@ using Zpravodajstvi.Application.Validation;
 
 namespace Zpravodajstvi.Application.DTOs;
 
+// Data z formuláře pro přidání komentáře. Jméno autora formulář neposílá –
+// server ho vždy bere z přihlášeného účtu (CommentsController.Add).
 public class CreateCommentDto
 {
     public int ArticleId { get; set; }
-
-    [Required(ErrorMessage = "Jméno je povinné.")]
-    [StringLength(50, MinimumLength = 2, ErrorMessage = "Jméno musí mít 2 až 50 znaků.")]
-    [NoProfanity(ErrorMessage = "Jméno autora obsahuje nepovolená slova.")]
-    [Display(Name = "Vaše jméno")]
-    public string AuthorName { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Obsah komentáře je povinný.")]
     [StringLength(1000, MinimumLength = 3, ErrorMessage = "Komentář musí mít mezi 3 a 1000 znaky.")]
@@ -27,5 +23,6 @@ public class CommentDto
     public string Content { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public int ArticleId { get; set; }
-    public string AuthorId { get; set; } = string.Empty;
+    // Id autora (Comment.UserId) – podle něj view pozná, zda může přihlášený uživatel komentář upravit
+    public string? UserId { get; set; }
 }

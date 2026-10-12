@@ -11,6 +11,10 @@ public class NoProfanityAttributeTests
     [Theory]
     [InlineData("Skvělý článek, moc děkuji za přínosné informace!")]
     [InlineData("Zajímavý pohled na moderní technologie a architekturu.")]
+    // Běžná slova, která zakázané slovo jen obsahují ("se-kundu", "o-pera-ce") – kontroluje se po celých slovech
+    [InlineData("sekundu")]
+    [InlineData("operace")]
+    [InlineData("Počkejte prosím sekundu, operace ještě probíhá.")]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData(null)]

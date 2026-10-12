@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -30,21 +31,14 @@ public class CommentsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Add([Bind(Prefix = "NewComment")] CreateCommentDto model)
     {
-        // Pokud je uživatel přihlášen a jméno nezadal nebo chce použít své systémové, doplníme ho
-        if (User?.Identity?.IsAuthenticated == true)
+        // Autora vždy určuje server podle přihlášeného účtu (Id a jméno z databáze), jméno z formuláře se nepoužívá
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user != null && string.IsNullOrWhiteSpace(model.AuthorName))
-            {
-                model.AuthorName = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : (user.Email ?? "Čtenář");
-            }
+            return Challenge();
         }
 
-        if (!string.IsNullOrWhiteSpace(model.AuthorName))
-        {
-            ModelState.Remove("AuthorName");
-            ModelState.Remove("NewComment.AuthorName");
-        }
+        var authorName = GetAuthorName(user);
 
         if (!ModelState.IsValid)
         {
@@ -55,12 +49,13 @@ public class CommentsController : Controller
             }
 
             article.NewComment = model;
+            article.CurrentUserName = authorName;
             return View("~/Views/Home/Details.cshtml", article);
         }
 
         try
         {
-            await _commentService.AddCommentAsync(model);
+            await _commentService.AddCommentAsync(model, user.Id, authorName);
             TempData["SuccessMessage"] = "Komentář byl úspěšně přidán.";
             return RedirectToAction("Details", "Home", new { id = model.ArticleId });
         }
@@ -72,22 +67,32 @@ public class CommentsController : Controller
     [HttpPost]
     [Authorize]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, int articleId, string content)
+    public async Task<IActionResult> Edit([Bind(Prefix = "EditComment")] UpdateComment model)
     {
-        if (string.IsNullOrWhiteSpace(content))
+        // Stejně jako při přidání: nevalidní text (např. vulgární slovo) vrátí detail článku s chybovou hláškou
+        if (!ModelState.IsValid)
         {
-            return RedirectToAction("Details", "Home", new { id = articleId });
+            var article = await _articleService.GetArticleDetailsAsync(model.ArticleId);
+            if (article == null)
+            {
+                return NotFound();
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            article.EditComment = model;
+            article.CurrentUserName = user != null ? GetAuthorName(user) : null;
+            return View("~/Views/Home/Details.cshtml", article);
         }
 
         var isAdmin = User.IsInRole("Admin") || User.IsInRole(DbInitializer.RoleAdmin);
-        var user = await _userManager.GetUserAsync(User);
-        var userName = user is not null ? (!string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : (user.Email ?? string.Empty)) : (User.Identity?.Name ?? string.Empty);
+        // Vlastník komentáře se pozná podle Id přihlášeného uživatele (claim NameIdentifier)
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         try
         {
-            await _commentService.UpdateCommentAsync(id, content, userName, isAdmin);
+            await _commentService.UpdateCommentAsync(model.Id, model.Content, userId, isAdmin);
             TempData["SuccessMessage"] = "Komentář byl úspěšně upraven.";
-            return RedirectToAction("Details", "Home", new { id = articleId, fragment = $"comment-{id}" });
+            return RedirectToAction("Details", "Home", new { id = model.ArticleId, fragment = $"comment-{model.Id}" });
         }
         catch (UnauthorizedAccessException)
         {
@@ -104,12 +109,13 @@ public class CommentsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id, int articleId)
     {
-        var userName = User.Identity?.Name ?? string.Empty;
+        // Vlastník komentáře se pozná podle Id přihlášeného uživatele (claim NameIdentifier)
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var isAdmin = User.IsInRole("Admin") || User.IsInRole(DbInitializer.RoleAdmin);
 
         try
         {
-            await _commentService.DeleteCommentAsync(id, userName, isAdmin);
+            await _commentService.DeleteCommentAsync(id, userId, isAdmin);
             TempData["SuccessMessage"] = "Komentář byl smazán.";
             return RedirectToAction("Details", "Home", new { id = articleId });
         }
@@ -121,6 +127,12 @@ public class CommentsController : Controller
         {
             return NotFound();
         }
+    }
+
+    // Jméno autora komentáře: celé jméno z účtu, případně e-mail
+    private static string GetAuthorName(ApplicationUser user)
+    {
+        return !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : (user.Email ?? "Čtenář");
     }
 }
 

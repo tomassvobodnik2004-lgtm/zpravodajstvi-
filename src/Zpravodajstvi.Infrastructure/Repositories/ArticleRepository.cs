@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Zpravodajstvi.Domain.Interfaces;
 using Zpravodajstvi.Domain.Entities;
+using Zpravodajstvi.Domain.Search;
 using Zpravodajstvi.Infrastructure.Data;
 
 namespace Zpravodajstvi.Infrastructure.Repositories;
@@ -29,19 +30,31 @@ public class ArticleRepository : IArticleRepository
             query = query.Where(a => a.CategoryId == categoryId.Value);
         }
 
+        // Porovnává se s normalizovanými sloupci (Search*), ne přes SQL lower(),
+        // který v SQLite převádí jen písmena ASCII ("Č" by zůstalo velké)
         if (!string.IsNullOrWhiteSpace(tag))
         {
-            var normalizedTag = tag.Trim().ToLower();
-            query = query.Where(a => a.Tags.Any(t => t.Name.ToLower() == normalizedTag));
+            var normalizedTag = NormalizeTag(tag);
+            query = query.Where(a => a.Tags.Any(t => t.SearchName == normalizedTag));
         }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var normalizedSearch = search.Trim().ToLower();
-            query = query.Where(a =>
-                a.Title.ToLower().Contains(normalizedSearch) ||
-                a.Perex.ToLower().Contains(normalizedSearch) ||
-                a.Content.ToLower().Contains(normalizedSearch));
+            var trimmedSearch = search.Trim();
+            if (trimmedSearch.StartsWith('#'))
+            {
+                // Hledání hashtagu (#Česko) funguje stejně jako filtr podle štítku
+                var normalizedTag = NormalizeTag(trimmedSearch);
+                query = query.Where(a => a.Tags.Any(t => t.SearchName == normalizedTag));
+            }
+            else
+            {
+                var normalizedSearch = SearchNormalizer.Normalize(trimmedSearch);
+                query = query.Where(a =>
+                    a.SearchTitle.Contains(normalizedSearch) ||
+                    a.SearchPerex.Contains(normalizedSearch) ||
+                    a.SearchContent.Contains(normalizedSearch));
+            }
         }
 
         return await query
@@ -117,5 +130,11 @@ public class ArticleRepository : IArticleRepository
             _context.Categories.Remove(category);
             await _context.SaveChangesAsync();
         }
+    }
+
+    // "#Česko", "česko" i "ČESKO" -> "cesko"
+    private static string NormalizeTag(string tag)
+    {
+        return SearchNormalizer.Normalize(tag.Trim().TrimStart('#').Trim());
     }
 }

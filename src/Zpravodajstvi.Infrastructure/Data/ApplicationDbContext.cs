@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Zpravodajstvi.Domain.Entities;
+using Zpravodajstvi.Domain.Search;
 using Zpravodajstvi.Infrastructure.Identity;
 
 namespace Zpravodajstvi.Infrastructure.Data;
@@ -35,6 +36,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(c => c.ArticleId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Konfigurace relace 1:N ApplicationUser -> Comments (autor komentáře).
+        // Po smazání účtu komentáře zůstanou s UserId = null a spravovat je může jen administrátor.
+        modelBuilder.Entity<Comment>()
+            .HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(c => c.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Konfigurace relace 1:N Article -> Images
         modelBuilder.Entity<Image>()
             .HasOne(i => i.Article)
@@ -46,5 +55,39 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<Article>()
             .HasMany(a => a.Tags)
             .WithMany(t => t.Articles);
+    }
+
+    // Před každým uložením se doplní normalizovaná pole pro vyhledávání (při vytvoření i úpravě)
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        UpdateSearchFields();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        UpdateSearchFields();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void UpdateSearchFields()
+    {
+        foreach (var entry in ChangeTracker.Entries<Article>())
+        {
+            if (entry.State is EntityState.Added or EntityState.Modified)
+            {
+                entry.Entity.SearchTitle = SearchNormalizer.Normalize(entry.Entity.Title);
+                entry.Entity.SearchPerex = SearchNormalizer.Normalize(entry.Entity.Perex);
+                entry.Entity.SearchContent = SearchNormalizer.Normalize(entry.Entity.Content);
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<Tag>())
+        {
+            if (entry.State is EntityState.Added or EntityState.Modified)
+            {
+                entry.Entity.SearchName = SearchNormalizer.Normalize(entry.Entity.Name);
+            }
+        }
     }
 }

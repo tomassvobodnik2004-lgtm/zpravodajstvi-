@@ -27,11 +27,13 @@ public class CommentService : ICommentService
                 AuthorName = c.AuthorName,
                 Content = c.Content,
                 CreatedAt = c.CreatedAt,
-                ArticleId = c.ArticleId
+                ArticleId = c.ArticleId,
+                UserId = c.UserId
             });
     }
 
-    public async Task<CommentDto> AddCommentAsync(CreateCommentDto dto)
+    // Autora (Id a jméno) předává controller podle přihlášeného uživatele, nikdy ne z formuláře
+    public async Task<CommentDto> AddCommentAsync(CreateCommentDto dto, string userId, string authorName)
     {
         ArgumentNullException.ThrowIfNull(dto);
 
@@ -43,7 +45,8 @@ public class CommentService : ICommentService
 
         var comment = new Comment
         {
-            AuthorName = dto.AuthorName.Trim(),
+            AuthorName = authorName.Trim(),
+            UserId = userId,
             Content = dto.Content.Trim(),
             CreatedAt = DateTime.UtcNow,
             ArticleId = dto.ArticleId
@@ -57,11 +60,12 @@ public class CommentService : ICommentService
             AuthorName = created.AuthorName,
             Content = created.Content,
             CreatedAt = created.CreatedAt,
-            ArticleId = created.ArticleId
+            ArticleId = created.ArticleId,
+            UserId = created.UserId
         };
 
     }
-    public async Task UpdateCommentAsync(int commentId, string content, string currentUserName, bool isAdmin)
+    public async Task UpdateCommentAsync(int commentId, string content, string? currentUserId, bool isAdmin)
     {
         var comment = await _commentRepository.GetByIdAsync(commentId);
         if (comment == null)
@@ -69,8 +73,8 @@ public class CommentService : ICommentService
             throw new KeyNotFoundException($"Komentář s ID {commentId} nebyl nalezen.");
         }
 
-        // Kontrola oprávnění: Admin může vše, ostatní jen své vlastní komentáře porovnáním jména
-        if (!isAdmin && !string.Equals(comment.AuthorName, currentUserName, StringComparison.OrdinalIgnoreCase))
+        // Kontrola oprávnění: Admin může vše, ostatní jen své vlastní komentáře (porovnání podle Id uživatele)
+        if (!isAdmin && !IsOwner(comment, currentUserId))
         {
             throw new UnauthorizedAccessException("Nemáte oprávnění upravovat tento komentář.");
         }
@@ -79,7 +83,7 @@ public class CommentService : ICommentService
         await _commentRepository.UpdateAsync(comment);
     }
 
-    public async Task DeleteCommentAsync(int commentId, string currentUserName, bool isAdmin)
+    public async Task DeleteCommentAsync(int commentId, string? currentUserId, bool isAdmin)
     {
         var comment = await _commentRepository.GetByIdAsync(commentId);
         if (comment == null)
@@ -87,12 +91,19 @@ public class CommentService : ICommentService
             throw new KeyNotFoundException($"Komentář s ID {commentId} nebyl nalezen.");
         }
 
-        // Kontrola oprávnění: Admin může vše, ostatní jen své vlastní komentáře porovnáním jména
-        if (!isAdmin && !string.Equals(comment.AuthorName, currentUserName, StringComparison.OrdinalIgnoreCase))
+        // Kontrola oprávnění: Admin může vše, ostatní jen své vlastní komentáře (porovnání podle Id uživatele)
+        if (!isAdmin && !IsOwner(comment, currentUserId))
         {
             throw new UnauthorizedAccessException("Nemáte oprávnění smazat tento komentář.");
         }
 
         await _commentRepository.DeleteAsync(comment);
+    }
+
+    // Komentář bez UserId (autora nešlo určit) nepatří nikomu – spravuje ho jen administrátor
+    private static bool IsOwner(Comment comment, string? currentUserId)
+    {
+        return !string.IsNullOrEmpty(comment.UserId)
+            && string.Equals(comment.UserId, currentUserId, StringComparison.Ordinal);
     }
 }

@@ -1,0 +1,26 @@
+@model RoleViewModel
+@{
+    ViewData["Title"] = "Nová role";
+}
+
+<div class="container mt-4">
+    <h2>Vytvořit novou roli</h2>
+    <hr />
+
+    <form asp-area="Admin" asp-controller="Role" asp-action="Create" method="post">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label"></label>
+            <input asp-for="Name" class="form-control" placeholder="např. Moderator" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-success">Uložit roli</button>
+        <a asp-area="Admin" asp-controller="Role" asp-action="Index" class="btn btn-secondary">Zpět na seznam</a>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,77 @@
+@model Zpravodajstvi.Presentation.Models.ProfileViewModel
+@{
+    ViewData["Title"] = "Můj profil";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                ✅ @TempData["SuccessMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Zavřít"></button>
+            </div>
+        }
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                    <h1 class="h3 fw-bold mb-0">👤 @Model.User.FullName</h1>
+                    <a asp-action="ChangePassword" class="btn btn-sm btn-outline-primary">🔑 Změnit heslo</a>
+                </div>
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">E-mail</dt>
+                    <dd class="col-sm-9">@Model.User.Email</dd>
+                    <dt class="col-sm-3">Role</dt>
+                    <dd class="col-sm-9"><span class="badge bg-primary">@(string.IsNullOrEmpty(Model.User.Role) ? "Bez role" : Model.User.Role)</span></dd>
+                    <dt class="col-sm-3">Registrace</dt>
+                    <dd class="col-sm-9 mb-0">@Model.User.CreatedAt.ToString("d. M. yyyy")</dd>
+                </dl>
+            </div>
+        </div>
+
+        @if (Model.Articles.Any())
+        {
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <h2 class="h5 fw-bold mb-3">📰 Moje články (@Model.Articles.Count())</h2>
+                    <ul class="list-group list-group-flush">
+                        @foreach (var article in Model.Articles)
+                        {
+                            <li class="list-group-item d-flex flex-wrap justify-content-between gap-2 px-0">
+                                <a asp-controller="Home" asp-action="Details" asp-route-id="@article.Id">@article.Title</a>
+                                <small class="text-muted">@article.CategoryName · @article.CreatedAt.ToString("d. M. yyyy")</small>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <h2 class="h5 fw-bold mb-3">💬 Moje komentáře (@Model.Comments.Count())</h2>
+                @if (!Model.Comments.Any())
+                {
+                    <p class="text-muted mb-0">Zatím jste nenapsali žádný komentář.</p>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-3">
+                        @foreach (var comment in Model.Comments)
+                        {
+                            <div class="border rounded p-3">
+                                <div class="d-flex flex-wrap justify-content-between gap-2 mb-1">
+                                    <a asp-controller="Home" asp-action="Details" asp-route-id="@comment.ArticleId" asp-fragment="comment-@comment.Id" class="fw-semibold">@comment.ArticleTitle</a>
+                                    <small class="text-muted">@comment.CreatedAt.ToString("d. M. yyyy v HH:mm")</small>
+                                </div>
+                                <p class="mb-0 text-secondary" style="white-space: pre-line;">@comment.Content</p>
+                            </div>
+                        }
+                    </div>
+                    <p class="small text-muted mt-3 mb-0">Své komentáře můžete upravit nebo smazat přímo u článku.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>

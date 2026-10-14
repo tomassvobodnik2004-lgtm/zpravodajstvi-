@@ -1,0 +1,26 @@
+@model CategoryViewModel
+@{
+    ViewData["Title"] = "Upravit kategorii";
+}
+
+<div class="container mt-4">
+    <h2>Upravit kategorii</h2>
+    <hr />
+
+    <form asp-area="Admin" asp-controller="Category" asp-action="Edit" method="post">
+        <input type="hidden" asp-for="Id" />
+
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label"></label>
+            <input asp-for="Name" class="form-control" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-warning">Uložit změny</button>
+        <a asp-area="Admin" asp-controller="Category" asp-action="Index" class="btn btn-secondary">Zpět na seznam</a>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

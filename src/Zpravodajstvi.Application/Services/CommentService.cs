@@ -9,11 +9,13 @@ public class CommentService : ICommentService
 {
     private readonly ICommentRepository _commentRepository;
     private readonly IArticleRepository _articleRepository;
+    private readonly IUserService _userService;
 
-    public CommentService(ICommentRepository commentRepository, IArticleRepository articleRepository)
+    public CommentService(ICommentRepository commentRepository, IArticleRepository articleRepository, IUserService userService)
     {
         _commentRepository = commentRepository;
         _articleRepository = articleRepository;
+        _userService = userService;
     }
 
     public async Task<IEnumerable<CommentDto>> GetCommentsByArticleIdAsync(int articleId)
@@ -21,19 +23,30 @@ public class CommentService : ICommentService
         var comments = await _commentRepository.GetByArticleIdAsync(articleId);
         return comments
             .OrderByDescending(c => c.CreatedAt)
-            .Select(c => new CommentDto
-            {
-                Id = c.Id,
-                AuthorName = c.AuthorName,
-                Content = c.Content,
-                CreatedAt = c.CreatedAt,
-                ArticleId = c.ArticleId,
-                UserId = c.UserId
-            });
+            .Select(DtoMapper.ToCommentDto);
     }
 
-    // Autora (Id a jméno) předává controller podle přihlášeného uživatele, nikdy ne z formuláře
-    public async Task<CommentDto> AddCommentAsync(CreateCommentDto dto, string userId, string authorName)
+    public async Task<IEnumerable<CommentDto>> GetCommentsByUserIdAsync(string userId)
+    {
+        var comments = await _commentRepository.GetByUserIdAsync(userId);
+        return comments.Select(DtoMapper.ToCommentDto);
+    }
+
+    public async Task<IEnumerable<CommentDto>> GetAllCommentsAsync()
+    {
+        var comments = await _commentRepository.GetAllWithDetailsAsync();
+        return comments.Select(DtoMapper.ToCommentDto);
+    }
+
+    public async Task<CommentDto?> GetCommentByIdAsync(int commentId)
+    {
+        var comment = await _commentRepository.GetByIdWithDetailsAsync(commentId);
+        return comment == null ? null : DtoMapper.ToCommentDto(comment);
+    }
+
+    // Autora určuje Id přihlášeného uživatele (předá ho controller z claimu), jméno si služba dohledá sama.
+    // Z formuláře nepřichází ani Id, ani jméno autora.
+    public async Task<CommentDto> AddCommentAsync(CreateCommentDto dto, string userId)
     {
         ArgumentNullException.ThrowIfNull(dto);
 
@@ -41,6 +54,12 @@ public class CommentService : ICommentService
         if (!articleExists)
         {
             throw new KeyNotFoundException($"Článek s ID {dto.ArticleId} nebyl nalezen.");
+        }
+
+        var authorName = await _userService.GetDisplayNameAsync(userId);
+        if (authorName == null)
+        {
+            throw new UnauthorizedAccessException("Přihlášený uživatel nebyl nalezen.");
         }
 
         var comment = new Comment
@@ -53,19 +72,10 @@ public class CommentService : ICommentService
         };
 
         var created = await _commentRepository.AddAsync(comment);
-
-        return new CommentDto
-        {
-            Id = created.Id,
-            AuthorName = created.AuthorName,
-            Content = created.Content,
-            CreatedAt = created.CreatedAt,
-            ArticleId = created.ArticleId,
-            UserId = created.UserId
-        };
-
+        return DtoMapper.ToCommentDto(created);
     }
-    public async Task UpdateCommentAsync(int commentId, string content, string? currentUserId, bool isAdmin)
+
+    public async Task UpdateCommentAsync(int commentId, string content, string? currentUserId, bool isModerator)
     {
         var comment = await _commentRepository.GetByIdAsync(commentId);
         if (comment == null)
@@ -73,8 +83,8 @@ public class CommentService : ICommentService
             throw new KeyNotFoundException($"Komentář s ID {commentId} nebyl nalezen.");
         }
 
-        // Kontrola oprávnění: Admin může vše, ostatní jen své vlastní komentáře (porovnání podle Id uživatele)
-        if (!isAdmin && !IsOwner(comment, currentUserId))
+        // Kontrola oprávnění: Admin a Redaktor (moderátoři) mohou vše, ostatní jen své vlastní komentáře (podle Id uživatele)
+        if (!isModerator && !IsOwner(comment, currentUserId))
         {
             throw new UnauthorizedAccessException("Nemáte oprávnění upravovat tento komentář.");
         }
@@ -83,7 +93,7 @@ public class CommentService : ICommentService
         await _commentRepository.UpdateAsync(comment);
     }
 
-    public async Task DeleteCommentAsync(int commentId, string? currentUserId, bool isAdmin)
+    public async Task DeleteCommentAsync(int commentId, string? currentUserId, bool isModerator)
     {
         var comment = await _commentRepository.GetByIdAsync(commentId);
         if (comment == null)
@@ -91,8 +101,8 @@ public class CommentService : ICommentService
             throw new KeyNotFoundException($"Komentář s ID {commentId} nebyl nalezen.");
         }
 
-        // Kontrola oprávnění: Admin může vše, ostatní jen své vlastní komentáře (porovnání podle Id uživatele)
-        if (!isAdmin && !IsOwner(comment, currentUserId))
+        // Kontrola oprávnění: Admin a Redaktor (moderátoři) mohou vše, ostatní jen své vlastní komentáře (podle Id uživatele)
+        if (!isModerator && !IsOwner(comment, currentUserId))
         {
             throw new UnauthorizedAccessException("Nemáte oprávnění smazat tento komentář.");
         }
@@ -100,7 +110,7 @@ public class CommentService : ICommentService
         await _commentRepository.DeleteAsync(comment);
     }
 
-    // Komentář bez UserId (autora nešlo určit) nepatří nikomu – spravuje ho jen administrátor
+    // Komentář bez UserId (autora nešlo určit) nepatří nikomu – spravuje ho jen moderátor
     private static bool IsOwner(Comment comment, string? currentUserId)
     {
         return !string.IsNullOrEmpty(comment.UserId)

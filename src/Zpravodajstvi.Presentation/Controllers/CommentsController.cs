@@ -1,12 +1,9 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Zpravodajstvi.Application.DTOs;
-using Zpravodajstvi.Domain.Interfaces;
 using Zpravodajstvi.Application.Interfaces;
-using Zpravodajstvi.Infrastructure.Data;
-using Zpravodajstvi.Infrastructure.Identity;
+using Zpravodajstvi.Domain.Constants;
 
 namespace Zpravodajstvi.Presentation.Controllers;
 
@@ -14,31 +11,32 @@ public class CommentsController : Controller
 {
     private readonly ICommentService _commentService;
     private readonly IArticleService _articleService;
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IUserService _userService;
+    private readonly ILogger<CommentsController> _logger;
 
     public CommentsController(
-        ICommentService _commentService,
+        ICommentService commentService,
         IArticleService articleService,
-        UserManager<ApplicationUser> userManager)
+        IUserService userService,
+        ILogger<CommentsController> logger)
     {
-        this._commentService = _commentService;
+        _commentService = commentService;
         _articleService = articleService;
-        _userManager = userManager;
+        _userService = userService;
+        _logger = logger;
     }
 
     [HttpPost]
-    [Authorize(Roles = $"{DbInitializer.RoleCtenar},{DbInitializer.RoleRedaktor},{DbInitializer.RoleAdmin}")]
+    [Authorize(Roles = AppRoles.All)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Add([Bind(Prefix = "NewComment")] CreateCommentDto model)
     {
-        // Autora vždy určuje server podle přihlášeného účtu (Id a jméno z databáze), jméno z formuláře se nepoužívá
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        // Autora vždy určuje server podle přihlášeného účtu (Id z claimu, jméno dohledá služba), z formuláře nic nepřichází
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId == null)
         {
             return Challenge();
         }
-
-        var authorName = GetAuthorName(user);
 
         if (!ModelState.IsValid)
         {
@@ -49,13 +47,14 @@ public class CommentsController : Controller
             }
 
             article.NewComment = model;
-            article.CurrentUserName = authorName;
+            article.CurrentUserName = await _userService.GetDisplayNameAsync(userId);
             return View("~/Views/Home/Details.cshtml", article);
         }
 
         try
         {
-            await _commentService.AddCommentAsync(model, user.Id, authorName);
+            var created = await _commentService.AddCommentAsync(model, userId);
+            _logger.LogInformation("Uživatel {UserId} přidal komentář {CommentId} k článku {ArticleId}.", userId, created.Id, model.ArticleId);
             TempData["SuccessMessage"] = "Komentář byl úspěšně přidán.";
             return RedirectToAction("Details", "Home", new { id = model.ArticleId });
         }
@@ -63,12 +62,19 @@ public class CommentsController : Controller
         {
             return NotFound();
         }
+        catch (UnauthorizedAccessException)
+        {
+            return Challenge();
+        }
     }
+
     [HttpPost]
     [Authorize]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit([Bind(Prefix = "EditComment")] UpdateComment model)
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
         // Stejně jako při přidání: nevalidní text (např. vulgární slovo) vrátí detail článku s chybovou hláškou
         if (!ModelState.IsValid)
         {
@@ -78,24 +84,22 @@ public class CommentsController : Controller
                 return NotFound();
             }
 
-            var user = await _userManager.GetUserAsync(User);
             article.EditComment = model;
-            article.CurrentUserName = user != null ? GetAuthorName(user) : null;
+            article.CurrentUserName = userId != null ? await _userService.GetDisplayNameAsync(userId) : null;
             return View("~/Views/Home/Details.cshtml", article);
         }
 
-        var isAdmin = User.IsInRole("Admin") || User.IsInRole(DbInitializer.RoleAdmin);
-        // Vlastník komentáře se pozná podle Id přihlášeného uživatele (claim NameIdentifier)
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
         try
         {
-            await _commentService.UpdateCommentAsync(model.Id, model.Content, userId, isAdmin);
+            // Vlastník komentáře se pozná podle Id přihlášeného uživatele, moderátor (Admin, Redaktor) smí upravit jakýkoli
+            await _commentService.UpdateCommentAsync(model.Id, model.Content, userId, IsModerator());
+            _logger.LogInformation("Uživatel {UserId} upravil komentář {CommentId}.", userId, model.Id);
             TempData["SuccessMessage"] = "Komentář byl úspěšně upraven.";
-            return RedirectToAction("Details", "Home", new { id = model.ArticleId, fragment = $"comment-{model.Id}" });
+            return RedirectToAction("Details", "Home", new { id = model.ArticleId }, $"comment-{model.Id}");
         }
         catch (UnauthorizedAccessException)
         {
+            _logger.LogWarning("Uživatel {UserId} se pokusil upravit cizí komentář {CommentId}.", userId, model.Id);
             return Forbid();
         }
         catch (KeyNotFoundException)
@@ -111,16 +115,17 @@ public class CommentsController : Controller
     {
         // Vlastník komentáře se pozná podle Id přihlášeného uživatele (claim NameIdentifier)
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var isAdmin = User.IsInRole("Admin") || User.IsInRole(DbInitializer.RoleAdmin);
 
         try
         {
-            await _commentService.DeleteCommentAsync(id, userId, isAdmin);
+            await _commentService.DeleteCommentAsync(id, userId, IsModerator());
+            _logger.LogInformation("Uživatel {UserId} smazal komentář {CommentId}.", userId, id);
             TempData["SuccessMessage"] = "Komentář byl smazán.";
             return RedirectToAction("Details", "Home", new { id = articleId });
         }
         catch (UnauthorizedAccessException)
         {
+            _logger.LogWarning("Uživatel {UserId} se pokusil smazat cizí komentář {CommentId}.", userId, id);
             return Forbid();
         }
         catch (KeyNotFoundException)
@@ -129,10 +134,9 @@ public class CommentsController : Controller
         }
     }
 
-    // Jméno autora komentáře: celé jméno z účtu, případně e-mail
-    private static string GetAuthorName(ApplicationUser user)
+    // Komentáře moderuje (upravuje a maže cizí) Admin a Redaktor
+    private bool IsModerator()
     {
-        return !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : (user.Email ?? "Čtenář");
+        return User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Redaktor);
     }
 }
-

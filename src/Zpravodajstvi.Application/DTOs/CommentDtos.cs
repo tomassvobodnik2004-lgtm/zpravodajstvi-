@@ -4,7 +4,7 @@ using Zpravodajstvi.Application.Validation;
 namespace Zpravodajstvi.Application.DTOs;
 
 // Data z formuláře pro přidání komentáře. Jméno autora formulář neposílá –
-// server ho vždy bere z přihlášeného účtu (CommentsController.Add).
+// autora (Id i jméno) vždy určuje server podle přihlášeného účtu (CommentService.AddCommentAsync).
 public class CreateCommentDto
 {
     public int ArticleId { get; set; }
@@ -19,10 +19,13 @@ public class CreateCommentDto
 public class CommentDto
 {
     public int Id { get; set; }
+    // Jméno autora: aktuální jméno uživatele (Comment.User), u komentáře bez uživatele uložené Comment.AuthorName
     public string AuthorName { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public int ArticleId { get; set; }
+    // Titulek článku – zobrazuje se ve správě komentářů a v profilu uživatele
+    public string ArticleTitle { get; set; } = string.Empty;
     // Id autora (Comment.UserId) – podle něj view pozná, zda může přihlášený uživatel komentář upravit
     public string? UserId { get; set; }
 }

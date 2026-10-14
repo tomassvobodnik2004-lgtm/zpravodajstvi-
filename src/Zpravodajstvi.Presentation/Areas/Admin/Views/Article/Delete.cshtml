@@ -1,11 +1,14 @@
 @model Zpravodajstvi.Application.DTOs.ArticleDetailDto
+@{
+    ViewData["Title"] = "Smazat článek";
+}
 
 <div class="container mt-4">
     <h2>Opravdu chcete smazat tento článek?</h2>
     
     <div class="alert alert-danger mt-3 shadow-sm">
         <h4 class="alert-heading">@Model.Title</h4>
-        <p class="mb-1"><strong>Kategorie:</strong> @Model.CategoryName | <strong>Vytvořeno:</strong> @Model.CreatedAt.ToString("d. M. yyyy HH:mm")</p>
+        <p class="mb-1"><strong>Kategorie:</strong> @Model.CategoryName | <strong>Autor:</strong> @Model.AuthorName | <strong>Vytvořeno:</strong> @Model.CreatedAt.ToString("d. M. yyyy HH:mm")</p>
         <hr />
         <p class="mb-0 text-muted">@Model.Perex</p>
         <p class="mt-2 text-danger fw-bold mb-0">⚠️ Tuto akci nelze vzít zpět.</p>

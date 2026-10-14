@@ -1,0 +1,39 @@
+@model ArticleFormViewModel
+@* Společná pole formuláře pro vytvoření i úpravu článku. Autora formulář neobsahuje – určuje ho server. *@
+
+<div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+<div class="mb-3">
+    <label asp-for="Title" class="form-label"></label>
+    <input asp-for="Title" class="form-control" />
+    <span asp-validation-for="Title" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="CategoryId" class="form-label"></label>
+    <select asp-for="CategoryId" asp-items="Model.Categories" class="form-select">
+        <option value="">-- Vyberte kategorii --</option>
+    </select>
+    <span asp-validation-for="CategoryId" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <span class="form-label d-block">Štítky</span>
+    @if (!Model.AvailableTags.Any())
+    {
+        <p class="text-muted small mb-0">Zatím nejsou vytvořeny žádné štítky.</p>
+    }
+    @foreach (var tag in Model.AvailableTags)
+    {
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" name="SelectedTagIds" id="tag-@tag.Value" value="@tag.Value" checked="@tag.Selected" />
+            <label class="form-check-label" for="tag-@tag.Value">#@tag.Text</label>
+        </div>
+    }
+</div>
+
+<div class="mb-3">
+    <label asp-for="Content" class="form-label"></label>
+    <textarea asp-for="Content" class="form-control" rows="8"></textarea>
+    <span asp-validation-for="Content" class="text-danger"></span>
+</div>

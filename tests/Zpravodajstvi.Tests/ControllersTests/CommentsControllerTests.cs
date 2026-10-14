@@ -1,59 +1,55 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 using Zpravodajstvi.Application.DTOs;
 using Zpravodajstvi.Application.Interfaces;
-using Zpravodajstvi.Infrastructure.Identity;
+using Zpravodajstvi.Domain.Constants;
 using Zpravodajstvi.Presentation.Controllers;
 
 namespace Zpravodajstvi.Tests.ControllersTests;
 
 public class CommentsControllerTests
 {
+    private const string CurrentUserId = "user-1";
+    private const string CurrentUserName = "Karel Čtenář";
+
     private readonly Mock<ICommentService> _commentServiceMock = new();
     private readonly Mock<IArticleService> _articleServiceMock = new();
-    private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
+    private readonly Mock<IUserService> _userServiceMock = new();
     private readonly CommentsController _controller;
-
-    // Přihlášený čtenář: Id je v claimu NameIdentifier, User.Identity.Name obsahuje e-mail
-    private readonly ApplicationUser _currentUser = new()
-    {
-        Id = "user-1",
-        UserName = "karel@zpravodajstvi.cz",
-        Email = "karel@zpravodajstvi.cz",
-        FullName = "Karel Čtenář"
-    };
 
     public CommentsControllerTests()
     {
-        var userStoreMock = new Mock<IUserStore<ApplicationUser>>();
-        _userManagerMock = new Mock<UserManager<ApplicationUser>>(
-            userStoreMock.Object, null!, null!, null!, null!, null!, null!, null!, null!);
-
-        _userManagerMock
-            .Setup(m => m.GetUserAsync(It.IsAny<ClaimsPrincipal>()))
-            .ReturnsAsync(_currentUser);
+        _userServiceMock
+            .Setup(s => s.GetDisplayNameAsync(CurrentUserId))
+            .ReturnsAsync(CurrentUserName);
 
         _controller = new CommentsController(
             _commentServiceMock.Object,
             _articleServiceMock.Object,
-            _userManagerMock.Object);
+            _userServiceMock.Object,
+            NullLogger<CommentsController>.Instance);
 
-        // Nastavení TempData a přihlášeného uživatele pro controller
+        SignIn(AppRoles.Ctenar);
+    }
+
+    // Přihlášený uživatel: Id je v claimu NameIdentifier, User.Identity.Name obsahuje e-mail
+    private void SignIn(string role)
+    {
         var httpContext = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
             [
-                new Claim(ClaimTypes.NameIdentifier, _currentUser.Id),
-                new Claim(ClaimTypes.Name, _currentUser.Email!)
+                new Claim(ClaimTypes.NameIdentifier, CurrentUserId),
+                new Claim(ClaimTypes.Name, "karel@zpravodajstvi.cz"),
+                new Claim(ClaimTypes.Role, role)
             ], "TestAuth"))
         };
-        var tempData = new TempDataDictionary(httpContext, Mock.Of<ITempDataProvider>());
-        _controller.TempData = tempData;
+        _controller.TempData = new TempDataDictionary(httpContext, Mock.Of<ITempDataProvider>());
         _controller.ControllerContext = new ControllerContext
         {
             HttpContext = httpContext
@@ -71,14 +67,14 @@ public class CommentsControllerTests
         };
 
         _commentServiceMock
-            .Setup(s => s.AddCommentAsync(model, "user-1", "Karel Čtenář"))
+            .Setup(s => s.AddCommentAsync(model, CurrentUserId))
             .ReturnsAsync(new CommentDto
             {
                 Id = 1,
-                AuthorName = "Karel Čtenář",
+                AuthorName = CurrentUserName,
                 Content = model.Content,
                 ArticleId = model.ArticleId,
-                UserId = "user-1"
+                UserId = CurrentUserId
             });
 
         // Act
@@ -89,8 +85,8 @@ public class CommentsControllerTests
         Assert.Equal("Details", redirectResult.ActionName);
         Assert.Equal("Home", redirectResult.ControllerName);
         Assert.Equal(1, redirectResult.RouteValues?["id"]);
-        // Autor (Id i jméno) se bere z přihlášeného účtu, ne z formuláře
-        _commentServiceMock.Verify(s => s.AddCommentAsync(model, "user-1", "Karel Čtenář"), Times.Once);
+        // Autor se bere z přihlášeného účtu (claim NameIdentifier), ne z formuláře
+        _commentServiceMock.Verify(s => s.AddCommentAsync(model, CurrentUserId), Times.Once);
     }
 
     [Fact]
@@ -105,15 +101,9 @@ public class CommentsControllerTests
 
         _controller.ModelState.AddModelError("Content", "Obsah komentáře je povinný.");
 
-        var articleDetail = new ArticleDetailDto
-        {
-            Id = 1,
-            Title = "Testovací článek"
-        };
-
         _articleServiceMock
             .Setup(s => s.GetArticleDetailsAsync(1))
-            .ReturnsAsync(articleDetail);
+            .ReturnsAsync(new ArticleDetailDto { Id = 1, Title = "Testovací článek" });
 
         // Act
         var result = await _controller.Add(model);
@@ -123,8 +113,8 @@ public class CommentsControllerTests
         Assert.Equal("~/Views/Home/Details.cshtml", viewResult.ViewName);
         var viewModel = Assert.IsType<ArticleDetailDto>(viewResult.Model);
         Assert.Equal(1, viewModel.Id);
-        Assert.Equal("Karel Čtenář", viewModel.CurrentUserName);
-        _commentServiceMock.Verify(s => s.AddCommentAsync(It.IsAny<CreateCommentDto>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        Assert.Equal(CurrentUserName, viewModel.CurrentUserName);
+        _commentServiceMock.Verify(s => s.AddCommentAsync(It.IsAny<CreateCommentDto>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -156,7 +146,7 @@ public class CommentsControllerTests
     }
 
     [Fact]
-    public async Task Edit_ValidModel_PassesUserIdToService()
+    public async Task Edit_ValidModel_PassesUserIdToServiceAndRedirectsToCommentAnchor()
     {
         // Arrange
         var model = new UpdateComment
@@ -169,9 +159,25 @@ public class CommentsControllerTests
         // Act
         var result = await _controller.Edit(model);
 
+        // Assert – čtenář není moderátor, služba ověří, že jde o jeho komentář
+        var redirectResult = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("comment-5", redirectResult.Fragment);
+        _commentServiceMock.Verify(s => s.UpdateCommentAsync(5, "Opravený text komentáře.", CurrentUserId, false), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(AppRoles.Admin)]
+    [InlineData(AppRoles.Redaktor)]
+    public async Task Delete_ByModerator_PassesModeratorFlag(string role)
+    {
+        // Arrange – Admin i Redaktor (správa obsahu) moderují komentáře
+        SignIn(role);
+
+        // Act
+        await _controller.Delete(7, 1);
+
         // Assert
-        Assert.IsType<RedirectToActionResult>(result);
-        _commentServiceMock.Verify(s => s.UpdateCommentAsync(5, "Opravený text komentáře.", "user-1", false), Times.Once);
+        _commentServiceMock.Verify(s => s.DeleteCommentAsync(7, CurrentUserId, true), Times.Once);
     }
 
     [Fact]
@@ -183,7 +189,7 @@ public class CommentsControllerTests
         // Assert – službě se předá Id uživatele, ne e-mail z User.Identity.Name
         var redirectResult = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Details", redirectResult.ActionName);
-        _commentServiceMock.Verify(s => s.DeleteCommentAsync(5, "user-1", false), Times.Once);
+        _commentServiceMock.Verify(s => s.DeleteCommentAsync(5, CurrentUserId, false), Times.Once);
     }
 
     [Fact]
@@ -191,7 +197,7 @@ public class CommentsControllerTests
     {
         // Arrange
         _commentServiceMock
-            .Setup(s => s.DeleteCommentAsync(7, "user-1", false))
+            .Setup(s => s.DeleteCommentAsync(7, CurrentUserId, false))
             .ThrowsAsync(new UnauthorizedAccessException());
 
         // Act

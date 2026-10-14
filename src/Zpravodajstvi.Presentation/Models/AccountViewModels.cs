@@ -43,3 +43,24 @@ public class LoginViewModel
 
     public string? ReturnUrl { get; set; }
 }
+
+// Změna vlastního hesla. Id uživatele formulář neposílá – bere se z přihlášení.
+public class ChangePasswordViewModel
+{
+    [Required(ErrorMessage = "Zadejte současné heslo.")]
+    [DataType(DataType.Password)]
+    [Display(Name = "Současné heslo")]
+    public string CurrentPassword { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Zadejte nové heslo.")]
+    [StringLength(100, MinimumLength = 6, ErrorMessage = "Nové heslo musí mít alespoň {2} znaků.")]
+    [DataType(DataType.Password)]
+    [Display(Name = "Nové heslo")]
+    public string NewPassword { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Zadejte nové heslo ještě jednou.")]
+    [DataType(DataType.Password)]
+    [Display(Name = "Potvrzení nového hesla")]
+    [Compare(nameof(NewPassword), ErrorMessage = "Nové heslo a jeho potvrzení se neshodují.")]
+    public string ConfirmNewPassword { get; set; } = string.Empty;
+}

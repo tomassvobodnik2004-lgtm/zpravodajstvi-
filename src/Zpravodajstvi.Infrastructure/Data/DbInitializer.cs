@@ -1,20 +1,13 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using Zpravodajstvi.Domain.Constants;
 using Zpravodajstvi.Domain.Entities;
-using Zpravodajstvi.Infrastructure.Identity;
 
 namespace Zpravodajstvi.Infrastructure.Data;
 
 public static class DbInitializer
 {
-    public const string RoleAdmin = "Admin";
-    public const string RoleRedaktor = "Redaktor";
-    public const string RoleCtenar = "Ctenar";
-
     public static async Task SeedDataAsync(IServiceProvider serviceProvider)
     {
         using var scope = serviceProvider.CreateScope();
@@ -23,12 +16,10 @@ public static class DbInitializer
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
         // Zajištění existence databáze a aplikace migrací (existující data zůstanou zachována)
-        await MarkLegacyDatabaseAsMigratedAsync(context);
         await context.Database.MigrateAsync();
 
-        // 1. Vytvoření 3 rolí: Admin, Redaktor, Ctenar
-        string[] roles = [RoleAdmin, RoleRedaktor, RoleCtenar];
-        foreach (var role in roles)
+        // 1. Vytvoření 3 rolí: Admin, Redaktor (správa obsahu), Ctenar (běžný uživatel)
+        foreach (var role in AppRoles.SystemRoles)
         {
             if (!await roleManager.RoleExistsAsync(role))
             {
@@ -37,14 +28,14 @@ public static class DbInitializer
         }
 
         // 2. Vytvoření výchozích uživatelů pro jednotlivé role
-        await EnsureUserAsync(userManager, "admin@zpravodajstvi.cz", "Heslo123!", "Hlavní Administrátor", RoleAdmin);
-        await EnsureUserAsync(userManager, "redaktor@zpravodajstvi.cz", "Heslo123!", "Jan Redaktor", RoleRedaktor);
-        await EnsureUserAsync(userManager, "ctenar@zpravodajstvi.cz", "Heslo123!", "Petr Čtenář", RoleCtenar);
+        await EnsureUserAsync(userManager, "admin@zpravodajstvi.cz", "Heslo123!", "Hlavní Administrátor", AppRoles.Admin);
+        await EnsureUserAsync(userManager, "redaktor@zpravodajstvi.cz", "Heslo123!", "Jan Redaktor", AppRoles.Redaktor);
+        await EnsureUserAsync(userManager, "ctenar@zpravodajstvi.cz", "Heslo123!", "Petr Čtenář", AppRoles.Ctenar);
 
         // 3. Naplnění ukázkových dat pro veřejný web (články, kategorie, štítky, komentáře)
         if (!await context.Categories.AnyAsync())
         {
-            // Autoři ukázkových komentářů – komentáře se s nimi svážou přes UserId
+            // Autoři ukázkových článků a komentářů – svážou se s nimi přes AuthorId a UserId
             var ctenar = await userManager.FindByEmailAsync("ctenar@zpravodajstvi.cz");
             var redaktor = await userManager.FindByEmailAsync("redaktor@zpravodajstvi.cz");
 
@@ -70,6 +61,7 @@ public static class DbInitializer
                 Content = "V posledních měsících došlo k bezprecedentnímu pokroku v oblasti umělé inteligence. Nové modely nejen generují kód s vysokou přesností, ale dokáží také asistovat při architektonických rozhodnutích a testování aplikací. Vývojáři po celém světě tak získávají mocného parťáka pro každodenní práci, což výrazně zvyšuje produktivitu i kvalitu dodávaných softwarových řešení.",
                 CreatedAt = DateTime.UtcNow.AddHours(-6),
                 Category = catTech,
+                AuthorId = redaktor?.Id,
                 Tags = new List<Tag> { tagAi, tagAktualne },
                 Images = new List<Image>
                 {
@@ -101,6 +93,7 @@ public static class DbInitializer
                 Content = "Ministerstvo dopravy a Správa železnic oznámily úspěšné schválení posouzení vlivu na životní prostředí (EIA) pro klíčový úsek budoucí vysokorychlostní železnice. Projekt v budoucnu zkrátí cestovní čas mezi Prahou a Brnem na necelou hodinu. Zahájení prvních stavebních prací je plánováno v horizontu několika let.",
                 CreatedAt = DateTime.UtcNow.AddDays(-1),
                 Category = catDomaci,
+                AuthorId = redaktor?.Id,
                 Tags = new List<Tag> { tagCesko, tagEkonomika, tagAktualne },
                 Images = new List<Image>
                 {
@@ -125,6 +118,7 @@ public static class DbInitializer
                 Content = "Reprezentanti předvedli od první minuty disciplinovaný a soustředěný výkon. Soupeře přehráli ve všech herních činnostech, klíčové bylo ubráněné oslabení v první třetině a následné dvě rychlé branky při hře pět na pět. Trenér po zápase vyzdvihl obětavost celého kádru.",
                 CreatedAt = DateTime.UtcNow.AddDays(-2),
                 Category = catSport,
+                AuthorId = redaktor?.Id,
                 Tags = new List<Tag> { tagHokej, tagAktualne },
                 Images = new List<Image>
                 {
@@ -136,30 +130,6 @@ public static class DbInitializer
             await context.Articles.AddRangeAsync(art1, art2, art3);
             await context.SaveChangesAsync();
         }
-    }
-
-    // Databáze ze starší verze aplikace vznikla přes EnsureCreated() a nemá tabulku __EFMigrationsHistory.
-    // Její schéma odpovídá první migraci (InitialCreate), proto ji zapíšeme jako již aplikovanou.
-    // MigrateAsync() pak spustí jen novější migrace a data v databázi zůstanou zachována.
-    private static async Task MarkLegacyDatabaseAsMigratedAsync(ApplicationDbContext context)
-    {
-        var databaseCreator = context.GetService<IRelationalDatabaseCreator>();
-        var historyRepository = context.GetService<IHistoryRepository>();
-
-        if (!await databaseCreator.ExistsAsync()
-            || !await databaseCreator.HasTablesAsync()
-            || await historyRepository.ExistsAsync())
-        {
-            return;
-        }
-
-        var initialMigration = context.Database.GetMigrations().First();
-
-        await using var transaction = await context.Database.BeginTransactionAsync();
-        await context.Database.ExecuteSqlRawAsync(historyRepository.GetCreateIfNotExistsScript());
-        await context.Database.ExecuteSqlRawAsync(
-            historyRepository.GetInsertScript(new HistoryRow(initialMigration, ProductInfo.GetVersion())));
-        await transaction.CommitAsync();
     }
 
     private static async Task EnsureUserAsync(UserManager<ApplicationUser> userManager, string email, string password, string fullName, string role)

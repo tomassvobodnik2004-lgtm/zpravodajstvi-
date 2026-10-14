@@ -1,0 +1,27 @@
+@model TagViewModel
+@{
+    ViewData["Title"] = "Upravit štítek";
+}
+
+<div class="container mt-4">
+    <h2>Upravit štítek</h2>
+    <hr />
+
+    <form asp-area="Admin" asp-controller="Tag" asp-action="Edit" method="post">
+        <input type="hidden" asp-for="Id" />
+
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label"></label>
+            <input asp-for="Name" class="form-control" />
+            <small class="form-text text-muted">Jedno slovo bez mezer, znak # se doplní automaticky.</small>
+            <span asp-validation-for="Name" class="text-danger d-block"></span>
+        </div>
+
+        <button type="submit" class="btn btn-warning">Uložit změny</button>
+        <a asp-area="Admin" asp-controller="Tag" asp-action="Index" class="btn btn-secondary">Zpět na seznam</a>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

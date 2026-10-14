@@ -5,4 +5,7 @@
     <Project Path="src/Zpravodajstvi.Infrastructure/Zpravodajstvi.Infrastructure.csproj" />
     <Project Path="src/Zpravodajstvi.Presentation/Zpravodajstvi.Presentation.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Zpravodajstvi.Tests/Zpravodajstvi.Tests.csproj" />
+  </Folder>
 </Solution>

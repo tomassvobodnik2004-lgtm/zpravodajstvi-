@@ -1,0 +1,22 @@
+@model CommentDto
+@{
+    ViewData["Title"] = "Smazat komentář";
+}
+
+<div class="container mt-4">
+    <h2>Opravdu chcete smazat tento komentář?</h2>
+
+    <div class="alert alert-danger mt-3 shadow-sm">
+        <p class="mb-1"><strong>Článek:</strong> @Model.ArticleTitle</p>
+        <p class="mb-1"><strong>Autor:</strong> @Model.AuthorName | <strong>Napsáno:</strong> @Model.CreatedAt.ToString("d. M. yyyy HH:mm")</p>
+        <hr />
+        <p class="mb-0" style="white-space: pre-line;">@Model.Content</p>
+        <p class="mt-2 text-danger fw-bold mb-0">⚠️ Tuto akci nelze vzít zpět.</p>
+    </div>
+
+    <form asp-area="Admin" asp-controller="Comment" asp-action="Delete" method="post">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger me-2">Ano, trvale smazat</button>
+        <a asp-area="Admin" asp-controller="Comment" asp-action="Index" class="btn btn-secondary">Zrušit</a>
+    </form>
+</div>

@@ -1,0 +1,27 @@
+@model RoleViewModel
+@{
+    ViewData["Title"] = "Přejmenovat roli";
+}
+
+<div class="container mt-4">
+    <h2>Přejmenovat roli</h2>
+    <hr />
+
+    <form asp-area="Admin" asp-controller="Role" asp-action="Edit" method="post">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+        <input type="hidden" asp-for="Id" />
+
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label"></label>
+            <input asp-for="Name" class="form-control" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-warning">Uložit změny</button>
+        <a asp-area="Admin" asp-controller="Role" asp-action="Index" class="btn btn-secondary">Zpět na seznam</a>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

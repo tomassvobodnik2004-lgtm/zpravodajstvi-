@@ -1,10 +1,8 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
 using Zpravodajstvi.Application.DTOs;
 using Zpravodajstvi.Application.Interfaces;
-using Zpravodajstvi.Infrastructure.Identity;
 using Zpravodajstvi.Presentation.Controllers;
 
 namespace Zpravodajstvi.Tests.ControllersTests;
@@ -12,16 +10,13 @@ namespace Zpravodajstvi.Tests.ControllersTests;
 public class HomeControllerTests
 {
     private readonly Mock<IArticleService> _articleServiceMock = new();
-    private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
+    private readonly Mock<ICategoryService> _categoryServiceMock = new();
+    private readonly Mock<IUserService> _userServiceMock = new();
     private readonly HomeController _controller;
 
     public HomeControllerTests()
     {
-        var userStoreMock = new Mock<IUserStore<ApplicationUser>>();
-        _userManagerMock = new Mock<UserManager<ApplicationUser>>(
-            userStoreMock.Object, null!, null!, null!, null!, null!, null!, null!, null!);
-
-        _controller = new HomeController(_articleServiceMock.Object, _userManagerMock.Object);
+        _controller = new HomeController(_articleServiceMock.Object, _categoryServiceMock.Object, _userServiceMock.Object);
     }
 
     [Fact]
@@ -30,8 +25,8 @@ public class HomeControllerTests
         // Arrange
         var sampleArticles = new List<ArticleListDto>
         {
-            new() { Id = 1, Title = "Článek 1", Perex = "Perex 1", CategoryName = "Domácí" },
-            new() { Id = 2, Title = "Článek 2", Perex = "Perex 2", CategoryName = "Sport" }
+            new() { Id = 1, Title = "Článek 1", Perex = "Perex 1", CategoryName = "Domácí", AuthorName = "Jan Redaktor" },
+            new() { Id = 2, Title = "Článek 2", Perex = "Perex 2", CategoryName = "Sport", AuthorName = "Jan Redaktor" }
         };
 
         var sampleCategories = new List<CategoryDto>
@@ -44,8 +39,8 @@ public class HomeControllerTests
             .Setup(s => s.GetArticlesAsync(null, null, null))
             .ReturnsAsync(sampleArticles);
 
-        _articleServiceMock
-            .Setup(s => s.GetCategoriesAsync())
+        _categoryServiceMock
+            .Setup(s => s.GetAllCategoriesAsync())
             .ReturnsAsync(sampleCategories);
 
         // Act
@@ -55,6 +50,7 @@ public class HomeControllerTests
         var viewResult = Assert.IsType<ViewResult>(result);
         var model = Assert.IsAssignableFrom<IEnumerable<ArticleListDto>>(viewResult.Model);
         Assert.Equal(2, model.Count());
+        Assert.Same(sampleCategories, viewResult.ViewData["Categories"]);
     }
 
     [Fact]
@@ -67,7 +63,8 @@ public class HomeControllerTests
             Title = "Detailní článek",
             Perex = "Perex",
             Content = "Obsah článku",
-            CategoryName = "Technologie"
+            CategoryName = "Technologie",
+            AuthorName = "Jan Redaktor"
         };
 
         _articleServiceMock
@@ -82,6 +79,7 @@ public class HomeControllerTests
         var model = Assert.IsType<ArticleDetailDto>(viewResult.Model);
         Assert.Equal(5, model.Id);
         Assert.Equal("Detailní článek", model.Title);
+        Assert.Equal("Jan Redaktor", model.AuthorName);
     }
 
     [Fact]

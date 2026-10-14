@@ -2,16 +2,10 @@ using Zpravodajstvi.Domain.Entities;
 
 namespace Zpravodajstvi.Domain.Interfaces;
 
-public interface IArticleRepository
+public interface IArticleRepository : IRepository<Article>
 {
-    Task<IEnumerable<Article>> GetAllAsync(int? categoryId = null, string? tag = null, string? search = null);
+    // Výpis článků s volitelným filtrem podle kategorie, štítku, hledaného textu a autora
+    Task<IEnumerable<Article>> GetFilteredAsync(int? categoryId = null, string? tag = null, string? search = null, string? authorId = null);
     Task<Article?> GetByIdWithDetailsAsync(int id);
-    Task<IEnumerable<Category>> GetCategoriesAsync();
     Task<bool> ExistsAsync(int id);
-    Task<Article> AddAsync(Article article);
-    Task<Category> AddCategoryAsync(Category category);
-    Task UpdateAsync(Article article);
-    Task DeleteAsync(int id);
-    Task<Category?> GetCategoryByIdAsync(int id);
-    Task DeleteCategoryAsync(int id);
 }

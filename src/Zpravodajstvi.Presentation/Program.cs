@@ -1,12 +1,7 @@
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Zpravodajstvi.Domain.Interfaces;
-using Zpravodajstvi.Application.Interfaces;
-using Zpravodajstvi.Application.Services;
+using Zpravodajstvi.Application;
+using Zpravodajstvi.Infrastructure;
 using Zpravodajstvi.Infrastructure.Data;
-using Zpravodajstvi.Infrastructure.Identity;
-using Zpravodajstvi.Infrastructure.Repositories;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -17,24 +12,15 @@ Log.Logger = new LoggerConfiguration()
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
-// 1. Konfigurace databáze SQLite
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+// 1. Připojovací řetězec k databázi SQLite
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Data Source=zpravodajstvi.db";
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString));
-
-// 2. Konfigurace ASP.NET Core Identity s rolemi
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
-{
-    options.SignIn.RequireConfirmedAccount = false;
-    options.Password.RequireDigit = false;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequiredLength = 6;
-})
-.AddEntityFrameworkStores<ApplicationDbContext>()
-.AddDefaultTokenProviders();
+// 2. Registrace vrstev v DI: aplikační služby (Application) a infrastruktura (Infrastructure) –
+//    DbContext, ASP.NET Core Identity s rolemi, repozitáře a služby pro účty, role a soubory.
+//    Jinde než tady Presentation na Infrastructure neodkazuje.
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(connectionString);
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
@@ -45,25 +31,18 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
 });
 
-// 3. Registrace aplikačních služeb a repozitářů v DI
-builder.Services.AddScoped<IArticleRepository, ArticleRepository>();
-builder.Services.AddScoped<ICommentRepository, CommentRepository>();
-builder.Services.AddScoped<IArticleService, ArticleService>();
-builder.Services.AddScoped<ICommentService, CommentService>();
-builder.Services.AddScoped<ICategoryService, CategoryService>();
-
-// 4. Přidání MVC kontrolerů a pohledů
+// 3. Přidání MVC kontrolerů a pohledů
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
-// 5. Inicializace databáze a seeding rolí i ukázkových článků
+// 4. Inicializace databáze (migrace) a seeding rolí, účtů i ukázkových článků
 using (var scope = app.Services.CreateScope())
 {
     await DbInitializer.SeedDataAsync(scope.ServiceProvider);
 }
 
-// 6. Konfigurace HTTP pipeline
+// 5. Konfigurace HTTP pipeline
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -73,12 +52,16 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 
+// Soubory známé při sestavení (CSS, JS, knihovny) obsluhuje MapStaticAssets. Obrázky nahrané za běhu
+// do wwwroot/uploads v jeho seznamu nejsou, proto je vrací UseStaticFiles (jen když nenajde žádný endpoint).
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
 
-// Routa pro administrátorskou Area (připraveno pro Osobu A)
+// Routa pro administrátorskou Area
 app.MapControllerRoute(
     name: "areas",
     pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");

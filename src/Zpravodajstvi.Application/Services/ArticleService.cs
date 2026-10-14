@@ -7,29 +7,29 @@ namespace Zpravodajstvi.Application.Services;
 
 public class ArticleService : IArticleService
 {
-    private readonly IArticleRepository _articleRepository;
+    private const int PerexLength = 150;
 
-    public ArticleService(IArticleRepository articleRepository)
+    private readonly IArticleRepository _articleRepository;
+    private readonly ITagRepository _tagRepository;
+    private readonly IFileStorageService _fileStorage;
+
+    public ArticleService(IArticleRepository articleRepository, ITagRepository tagRepository, IFileStorageService fileStorage)
     {
         _articleRepository = articleRepository;
+        _tagRepository = tagRepository;
+        _fileStorage = fileStorage;
     }
 
     public async Task<IEnumerable<ArticleListDto>> GetArticlesAsync(int? categoryId = null, string? tag = null, string? search = null)
     {
-        var articles = await _articleRepository.GetAllAsync(categoryId, tag, search);
+        var articles = await _articleRepository.GetFilteredAsync(categoryId, tag, search);
+        return articles.Select(DtoMapper.ToListDto);
+    }
 
-        return articles.Select(a => new ArticleListDto
-        {
-            Id = a.Id,
-            Title = a.Title,
-            Perex = a.Perex,
-            CategoryId = a.CategoryId,
-            CategoryName = a.Category?.Name ?? "Bez kategorie",
-            CreatedAt = a.CreatedAt,
-            ImageUrl = a.Images?.FirstOrDefault()?.Url,
-            CommentsCount = a.Comments?.Count ?? 0,
-            Tags = a.Tags?.Select(t => t.Name).ToList() ?? new List<string>()
-        });
+    public async Task<IEnumerable<ArticleListDto>> GetArticlesByAuthorAsync(string authorId)
+    {
+        var articles = await _articleRepository.GetFilteredAsync(authorId: authorId);
+        return articles.Select(DtoMapper.ToListDto);
     }
 
     public async Task<ArticleDetailDto?> GetArticleDetailsAsync(int id)
@@ -48,9 +48,12 @@ public class ArticleService : IArticleService
             Content = article.Content,
             CategoryId = article.CategoryId,
             CategoryName = article.Category?.Name ?? "Bez kategorie",
+            AuthorId = article.AuthorId,
+            AuthorName = article.Author?.DisplayName ?? DtoMapper.UnknownAuthor,
             CreatedAt = article.CreatedAt,
             UpdatedAt = article.UpdatedAt,
             Tags = article.Tags?.Select(t => t.Name).ToList() ?? new List<string>(),
+            TagIds = article.Tags?.Select(t => t.Id).ToList() ?? new List<int>(),
             Images = article.Images?.Select(i => new ImageDto
             {
                 Id = i.Id,
@@ -59,15 +62,8 @@ public class ArticleService : IArticleService
             }).ToList() ?? new List<ImageDto>(),
             Comments = article.Comments?
                 .OrderByDescending(c => c.CreatedAt)
-                .Select(c => new CommentDto
-                {
-                    Id = c.Id,
-                    AuthorName = c.AuthorName,
-                    Content = c.Content,
-                    CreatedAt = c.CreatedAt,
-                    ArticleId = c.ArticleId,
-                    UserId = c.UserId
-                }).ToList() ?? new List<CommentDto>(),
+                .Select(DtoMapper.ToCommentDto)
+                .ToList() ?? new List<CommentDto>(),
             NewComment = new CreateCommentDto
             {
                 ArticleId = article.Id
@@ -75,42 +71,31 @@ public class ArticleService : IArticleService
         };
     }
 
-    public async Task<IEnumerable<CategoryDto>> GetCategoriesAsync()
+    public async Task<ArticleDetailDto> CreateArticleAsync(CreateArticleDto dto, string authorId)
     {
-        var categories = await _articleRepository.GetCategoriesAsync();
-        return categories.Select(c => new CategoryDto
-        {
-            Id = c.Id,
-            Name = c.Name,
-            ArticlesCount = c.Articles?.Count ?? 0
-        });
-    }
-
-    public async Task<ArticleDetailDto> CreateArticleAsync(CreateArticleDto dto)
-    {
-        var perex = !string.IsNullOrWhiteSpace(dto.Perex) 
-            ? dto.Perex 
-            : (dto.Content.Length > 150 ? dto.Content[..150] + "..." : dto.Content);
+        ArgumentNullException.ThrowIfNull(dto);
 
         var article = new Article
         {
             Title = dto.Title,
-            Perex = perex,
+            Perex = !string.IsNullOrWhiteSpace(dto.Perex) ? dto.Perex : CreatePerex(dto.Content),
             Content = dto.Content,
             CategoryId = dto.CategoryId,
-            CreatedAt = DateTime.UtcNow
+            // Autor = přihlášený uživatel, kterého předal controller (ne hodnota z formuláře)
+            AuthorId = authorId,
+            CreatedAt = DateTime.UtcNow,
+            Tags = await LoadTagsAsync(dto.TagIds)
         };
 
-        if (!string.IsNullOrWhiteSpace(dto.ImageUrl))
+        // Uložení souboru obstará IFileStorageService, článek si pamatuje jen jeho URL
+        if (dto.Image != null && dto.Image.Length > 0)
         {
-            article.Images = new List<Image>
+            var imageUrl = await _fileStorage.SaveImageAsync(dto.Image);
+            article.Images.Add(new Image
             {
-                new Image
-                {
-                    Url = dto.ImageUrl,
-                    Caption = dto.ImageCaption ?? dto.Title
-                }
-            };
+                Url = imageUrl,
+                Caption = dto.Title
+            });
         }
 
         var createdArticle = await _articleRepository.AddAsync(article);
@@ -122,44 +107,87 @@ public class ArticleService : IArticleService
             Perex = createdArticle.Perex,
             Content = createdArticle.Content,
             CategoryId = createdArticle.CategoryId,
+            AuthorId = createdArticle.AuthorId,
             CreatedAt = createdArticle.CreatedAt
         };
     }
 
-    public async Task UpdateArticleAsync(int id, string title, string content, int categoryId, string? imageUrl = null)
+    public async Task UpdateArticleAsync(UpdateArticleDto dto)
     {
-        var article = await _articleRepository.GetByIdWithDetailsAsync(id);
+        ArgumentNullException.ThrowIfNull(dto);
+
+        var article = await _articleRepository.GetByIdWithDetailsAsync(dto.Id);
         if (article == null)
         {
-            throw new KeyNotFoundException($"Článek s ID {id} nebyl nalezen.");
+            throw new KeyNotFoundException($"Článek s ID {dto.Id} nebyl nalezen.");
         }
 
-        article.Title = title;
-        article.Content = content;
-        article.Perex = content.Length > 150 ? content[..150] + "..." : content;
-        article.CategoryId = categoryId;
+        article.Title = dto.Title;
+        article.Content = dto.Content;
+        article.Perex = CreatePerex(dto.Content);
+        article.CategoryId = dto.CategoryId;
         article.UpdatedAt = DateTime.UtcNow;
 
-        if (!string.IsNullOrWhiteSpace(imageUrl))
+        article.Tags.Clear();
+        foreach (var tag in await LoadTagsAsync(dto.TagIds))
         {
-            if (article.Images == null)
-            {
-                article.Images = new List<Image>();
-            }
+            article.Tags.Add(tag);
+        }
 
+        // Nový obrázek nahradí ten dosavadní, staré soubory se smažou až po úspěšném uložení článku
+        var replacedImageUrls = new List<string>();
+        if (dto.Image != null && dto.Image.Length > 0)
+        {
+            var imageUrl = await _fileStorage.SaveImageAsync(dto.Image);
+            replacedImageUrls.AddRange(article.Images.Select(i => i.Url));
+            article.Images.Clear();
             article.Images.Add(new Image
             {
                 Url = imageUrl,
-                Caption = title,
+                Caption = dto.Title,
                 ArticleId = article.Id
             });
         }
 
         await _articleRepository.UpdateAsync(article);
+
+        foreach (var url in replacedImageUrls)
+        {
+            _fileStorage.DeleteImage(url);
+        }
     }
 
     public async Task DeleteArticleAsync(int id)
     {
-        await _articleRepository.DeleteAsync(id);
+        var article = await _articleRepository.GetByIdWithDetailsAsync(id);
+        if (article == null)
+        {
+            return;
+        }
+
+        var imageUrls = article.Images.Select(i => i.Url).ToList();
+        await _articleRepository.DeleteAsync(article);
+
+        foreach (var url in imageUrls)
+        {
+            _fileStorage.DeleteImage(url);
+        }
+    }
+
+    // Perex = prvních 150 znaků textu článku
+    private static string CreatePerex(string content)
+    {
+        return content.Length > PerexLength ? content[..PerexLength] + "..." : content;
+    }
+
+    private async Task<List<Tag>> LoadTagsAsync(IEnumerable<int>? tagIds)
+    {
+        var ids = tagIds?.Distinct().ToList() ?? new List<int>();
+        if (ids.Count == 0)
+        {
+            return new List<Tag>();
+        }
+
+        return (await _tagRepository.FindAsync(t => ids.Contains(t.Id))).ToList();
     }
 }

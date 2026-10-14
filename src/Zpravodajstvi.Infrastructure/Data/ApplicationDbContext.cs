@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Zpravodajstvi.Domain.Entities;
 using Zpravodajstvi.Domain.Search;
-using Zpravodajstvi.Infrastructure.Identity;
 
 namespace Zpravodajstvi.Infrastructure.Data;
 
@@ -36,11 +35,19 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(c => c.ArticleId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Konfigurace relace 1:N ApplicationUser -> Articles (autor článku).
+        // Po smazání účtu články zůstanou s AuthorId = null a zobrazí se jako od neznámého autora.
+        modelBuilder.Entity<Article>()
+            .HasOne(a => a.Author)
+            .WithMany(u => u.Articles)
+            .HasForeignKey(a => a.AuthorId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Konfigurace relace 1:N ApplicationUser -> Comments (autor komentáře).
-        // Po smazání účtu komentáře zůstanou s UserId = null a spravovat je může jen administrátor.
+        // Po smazání účtu komentáře zůstanou s UserId = null a spravovat je může jen administrátor nebo redaktor.
         modelBuilder.Entity<Comment>()
-            .HasOne<ApplicationUser>()
-            .WithMany()
+            .HasOne(c => c.User)
+            .WithMany(u => u.Comments)
             .HasForeignKey(c => c.UserId)
             .OnDelete(DeleteBehavior.SetNull);
 

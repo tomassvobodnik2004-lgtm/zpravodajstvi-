@@ -5,44 +5,49 @@ using Zpravodajstvi.Infrastructure.Data;
 
 namespace Zpravodajstvi.Infrastructure.Repositories;
 
-public class CommentRepository : ICommentRepository
+public class CommentRepository : Repository<Comment>, ICommentRepository
 {
-    private readonly ApplicationDbContext _context;
-
-    public CommentRepository(ApplicationDbContext context)
+    public CommentRepository(ApplicationDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<IEnumerable<Comment>> GetByArticleIdAsync(int articleId)
     {
         return await _context.Comments
+            .Include(c => c.User)
             .Where(c => c.ArticleId == articleId)
             .OrderByDescending(c => c.CreatedAt)
             .AsNoTracking()
             .ToListAsync();
     }
 
-    public async Task<Comment> AddAsync(Comment comment)
+    public async Task<IEnumerable<Comment>> GetByUserIdAsync(string userId)
     {
-        await _context.Comments.AddAsync(comment);
-        await _context.SaveChangesAsync();
-        return comment;
+        return await _context.Comments
+            .Include(c => c.Article)
+            .Include(c => c.User)
+            .Where(c => c.UserId == userId)
+            .OrderByDescending(c => c.CreatedAt)
+            .AsNoTracking()
+            .ToListAsync();
     }
-    public async Task<Comment> UpdateAsync(Comment comment)
+
+    public async Task<IEnumerable<Comment>> GetAllWithDetailsAsync()
     {
-        _context.Comments.Update(comment);
-        await _context.SaveChangesAsync();
-        return comment;
+        return await _context.Comments
+            .Include(c => c.Article)
+            .Include(c => c.User)
+            .OrderByDescending(c => c.CreatedAt)
+            .AsNoTracking()
+            .ToListAsync();
     }
-    public async Task<Comment> DeleteAsync(Comment comment)
+
+    public async Task<Comment?> GetByIdWithDetailsAsync(int id)
     {
-        _context.Comments.Remove(comment);
-        await _context.SaveChangesAsync();
-        return comment;
-    }
-    public async Task<Comment?> GetByIdAsync(int id)
-    {
-        return await _context.Comments.FindAsync(id);
+        return await _context.Comments
+            .Include(c => c.Article)
+            .Include(c => c.User)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id);
     }
 }

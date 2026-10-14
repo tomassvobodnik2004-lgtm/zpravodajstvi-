@@ -1,4 +1,7 @@
-@model Zpravodajstvi.Presentation.Areas.Admin.Models.EditUserViewModel
+@model EditUserViewModel
+@{
+    ViewData["Title"] = "Upravit uživatelský účet";
+}
 
 <div class="container mt-4" style="max-width: 650px;">
     <div class="card shadow-sm">
@@ -7,32 +10,28 @@
         </div>
         <div class="card-body">
             <form asp-area="Admin" asp-controller="User" asp-action="Edit" method="post">
-                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
                 <input type="hidden" asp-for="UserId" />
 
                 <div class="mb-3">
-                    <label asp-for="FullName" class="form-label fw-bold">Celé jméno:</label>
+                    <label asp-for="FullName" class="form-label fw-bold"></label>
                     <input asp-for="FullName" class="form-control" placeholder="Zadejte celé jméno" />
                     <span asp-validation-for="FullName" class="text-danger"></span>
                 </div>
 
                 <div class="mb-3">
-                    <label asp-for="Email" class="form-label fw-bold">E-mailová adresa:</label>
+                    <label asp-for="Email" class="form-label fw-bold"></label>
                     <input asp-for="Email" class="form-control" type="email" placeholder="uzivatel@example.com" />
                     <span asp-validation-for="Email" class="text-danger"></span>
                 </div>
 
                 <div class="mb-3">
-                    <label asp-for="SelectedRole" class="form-label fw-bold">Vyberte roli:</label>
+                    <label asp-for="SelectedRole" class="form-label fw-bold"></label>
                     <select asp-for="SelectedRole" asp-items="Model.AvailableRoles" class="form-select"></select>
+                    <span asp-validation-for="SelectedRole" class="text-danger"></span>
                 </div>
 
-                <div class="mb-3">
-                    <label asp-for="NewPassword" class="form-label fw-bold">Změnit heslo:</label>
-                    <input asp-for="NewPassword" class="form-control" type="password" placeholder="Ponechte prázdné pro zachování stávajícího hesla" />
-                    <small class="form-text text-muted">Vyplňte pouze v případě, že chcete uživateli nastavit nové heslo.</small>
-                    <span asp-validation-for="NewPassword" class="text-danger"></span>
-                </div>
+                <p class="small text-muted mb-0">🔒 Heslo uživatele administrátor měnit nemůže.</p>
 
                 <div class="d-flex justify-content-between mt-4">
                     <a asp-area="Admin" asp-controller="User" asp-action="Index" class="btn btn-secondary">Zpět na přehled</a>
@@ -42,3 +41,7 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

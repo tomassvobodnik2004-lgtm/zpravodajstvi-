@@ -12,11 +12,16 @@ public class CommentServiceTests
 {
     private readonly Mock<ICommentRepository> _commentRepoMock = new();
     private readonly Mock<IArticleRepository> _articleRepoMock = new();
+    private readonly Mock<IUserService> _userServiceMock = new();
     private readonly CommentService _service;
 
     public CommentServiceTests()
     {
-        _service = new CommentService(_commentRepoMock.Object, _articleRepoMock.Object);
+        _userServiceMock
+            .Setup(s => s.GetDisplayNameAsync("user-1"))
+            .ReturnsAsync("Petr Čtenář");
+
+        _service = new CommentService(_commentRepoMock.Object, _articleRepoMock.Object, _userServiceMock.Object);
     }
 
     [Fact]
@@ -42,9 +47,9 @@ public class CommentServiceTests
             });
 
         // Act
-        var result = await _service.AddCommentAsync(dto, "user-1", "Petr Čtenář");
+        var result = await _service.AddCommentAsync(dto, "user-1");
 
-        // Assert
+        // Assert – Id autora předal controller, jméno si služba dohledala sama
         Assert.NotNull(result);
         Assert.Equal(10, result.Id);
         Assert.Equal("Petr Čtenář", result.AuthorName);
@@ -71,9 +76,21 @@ public class CommentServiceTests
             .ReturnsAsync(false);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.AddCommentAsync(dto, "user-1", "Neznámý"));
+        var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.AddCommentAsync(dto, "user-1"));
         Assert.Contains("999", exception.Message);
 
+        _commentRepoMock.Verify(r => r.AddAsync(It.IsAny<Comment>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AddCommentAsync_UnknownUser_ThrowsUnauthorizedAccessException()
+    {
+        // Arrange – účet mezitím někdo smazal
+        _articleRepoMock.Setup(r => r.ExistsAsync(1)).ReturnsAsync(true);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            _service.AddCommentAsync(new CreateCommentDto { ArticleId = 1, Content = "Text" }, "deleted-user"));
         _commentRepoMock.Verify(r => r.AddAsync(It.IsAny<Comment>()), Times.Never);
     }
 
@@ -101,6 +118,29 @@ public class CommentServiceTests
     }
 
     [Fact]
+    public async Task GetCommentsByArticleIdAsync_UsesCurrentNameOfUserFromNavigationProperty()
+    {
+        // Arrange – uživatel se mezitím přejmenoval, komentář bez uživatele má jen uložené jméno
+        var comments = new List<Comment>
+        {
+            new()
+            {
+                Id = 1, ArticleId = 1, AuthorName = "Jan Redaktor", UserId = "u-1",
+                User = new ApplicationUser { Id = "u-1", FullName = "Jan Redaktor Nový" }
+            },
+            new() { Id = 2, ArticleId = 1, AuthorName = "Smazaný účet", UserId = null, User = null }
+        };
+        _commentRepoMock.Setup(r => r.GetByArticleIdAsync(1)).ReturnsAsync(comments);
+
+        // Act
+        var result = (await _service.GetCommentsByArticleIdAsync(1)).ToDictionary(c => c.Id);
+
+        // Assert
+        Assert.Equal("Jan Redaktor Nový", result[1].AuthorName);
+        Assert.Equal("Smazaný účet", result[2].AuthorName);
+    }
+
+    [Fact]
     public async Task UpdateCommentAsync_Owner_UpdatesContent()
     {
         // Arrange
@@ -108,7 +148,7 @@ public class CommentServiceTests
         _commentRepoMock.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(comment);
 
         // Act
-        await _service.UpdateCommentAsync(5, "  Nový text  ", "user-1", isAdmin: false);
+        await _service.UpdateCommentAsync(5, "  Nový text  ", "user-1", isModerator: false);
 
         // Assert
         Assert.Equal("Nový text", comment.Content);
@@ -123,9 +163,24 @@ public class CommentServiceTests
         _commentRepoMock.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(comment);
 
         // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _service.UpdateCommentAsync(5, "Cizí úprava", "user-2", isAdmin: false));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _service.UpdateCommentAsync(5, "Cizí úprava", "user-2", isModerator: false));
         Assert.Equal("Původní text", comment.Content);
         _commentRepoMock.Verify(r => r.UpdateAsync(It.IsAny<Comment>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateCommentAsync_Moderator_CanEditForeignComment()
+    {
+        // Arrange – Redaktor (moderátor) upravuje komentář čtenáře
+        var comment = new Comment { Id = 5, ArticleId = 1, AuthorName = "Petr Čtenář", UserId = "user-1", Content = "Původní text" };
+        _commentRepoMock.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(comment);
+
+        // Act
+        await _service.UpdateCommentAsync(5, "Text upravený moderátorem", "redaktor-1", isModerator: true);
+
+        // Assert
+        Assert.Equal("Text upravený moderátorem", comment.Content);
+        _commentRepoMock.Verify(r => r.UpdateAsync(comment), Times.Once);
     }
 
     [Fact]
@@ -136,22 +191,22 @@ public class CommentServiceTests
         _commentRepoMock.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(comment);
 
         // Act
-        await _service.DeleteCommentAsync(5, "user-1", isAdmin: false);
+        await _service.DeleteCommentAsync(5, "user-1", isModerator: false);
 
         // Assert
         _commentRepoMock.Verify(r => r.DeleteAsync(comment), Times.Once);
     }
 
     [Fact]
-    public async Task DeleteCommentAsync_CommentWithoutUserId_OnlyAdminCanDelete()
+    public async Task DeleteCommentAsync_CommentWithoutUserId_OnlyModeratorCanDelete()
     {
         // Arrange – starý komentář, u kterého migrace nedokázala jednoznačně určit autora
         var comment = new Comment { Id = 6, ArticleId = 1, AuthorName = "Jan Redaktor", UserId = null };
         _commentRepoMock.Setup(r => r.GetByIdAsync(6)).ReturnsAsync(comment);
 
         // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _service.DeleteCommentAsync(6, "user-1", isAdmin: false));
-        await _service.DeleteCommentAsync(6, "admin-1", isAdmin: true);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _service.DeleteCommentAsync(6, "user-1", isModerator: false));
+        await _service.DeleteCommentAsync(6, "admin-1", isModerator: true);
 
         _commentRepoMock.Verify(r => r.DeleteAsync(comment), Times.Once);
     }

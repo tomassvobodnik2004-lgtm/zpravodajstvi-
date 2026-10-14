@@ -2,11 +2,11 @@ using Zpravodajstvi.Domain.Entities;
 
 namespace Zpravodajstvi.Domain.Interfaces;
 
-public interface ICommentRepository
+public interface ICommentRepository : IRepository<Comment>
 {
     Task<IEnumerable<Comment>> GetByArticleIdAsync(int articleId);
-    Task<Comment> AddAsync(Comment comment);
-    Task<Comment?> GetByIdAsync(int commentId);
-    Task<Comment> UpdateAsync(Comment comment);
-    Task<Comment> DeleteAsync(Comment comment);
+    Task<IEnumerable<Comment>> GetByUserIdAsync(string userId);
+    // Všechny komentáře včetně článku a autora (správa komentářů v administraci)
+    Task<IEnumerable<Comment>> GetAllWithDetailsAsync();
+    Task<Comment?> GetByIdWithDetailsAsync(int id);
 }

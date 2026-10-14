@@ -1,0 +1,31 @@
+@model CommentEditViewModel
+@{
+    ViewData["Title"] = "Upravit komentář";
+}
+
+<div class="container mt-4">
+    <h2>Upravit komentář</h2>
+    <p class="text-muted mb-1"><strong>Článek:</strong> @Model.ArticleTitle</p>
+    <p class="text-muted"><strong>Autor:</strong> @Model.AuthorName</p>
+    <hr />
+
+    <form asp-area="Admin" asp-controller="Comment" asp-action="Edit" method="post">
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="ArticleId" />
+        <input type="hidden" asp-for="ArticleTitle" />
+        <input type="hidden" asp-for="AuthorName" />
+
+        <div class="mb-3">
+            <label asp-for="Content" class="form-label"></label>
+            <textarea asp-for="Content" class="form-control" rows="5"></textarea>
+            <span asp-validation-for="Content" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-warning">Uložit změny</button>
+        <a asp-area="Admin" asp-controller="Comment" asp-action="Index" class="btn btn-secondary">Zpět na seznam</a>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

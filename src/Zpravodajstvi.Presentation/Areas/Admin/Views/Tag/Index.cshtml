@@ -1,0 +1,51 @@
+@model IEnumerable<TagDto>
+@{
+    ViewData["Title"] = "Správa štítků";
+}
+
+<div class="container mt-4">
+    <partial name="_AdminNav" />
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="mb-0">Správa štítků</h2>
+        <a asp-area="Admin" asp-controller="Tag" asp-action="Create" class="btn btn-primary">
+            + Přidat nový štítek
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Štítek</th>
+                    <th>Počet článků</th>
+                    <th>Akce</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    foreach (var tag in Model)
+                    {
+                        <tr>
+                            <td>@tag.Id</td>
+                            <td>#@tag.Name</td>
+                            <td>@tag.ArticlesCount</td>
+                            <td class="text-nowrap">
+                                <a asp-area="Admin" asp-controller="Tag" asp-action="Edit" asp-route-id="@tag.Id" class="btn btn-sm btn-warning">Upravit</a>
+                                <a asp-area="Admin" asp-controller="Tag" asp-action="Delete" asp-route-id="@tag.Id" class="btn btn-sm btn-danger">Smazat</a>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="4" class="text-center">Zatím nebyly vytvořeny žádné štítky.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

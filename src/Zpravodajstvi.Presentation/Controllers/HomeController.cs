@@ -1,10 +1,7 @@
 using System.Diagnostics;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Zpravodajstvi.Domain.Interfaces;
 using Zpravodajstvi.Application.Interfaces;
-using Zpravodajstvi.Infrastructure.Identity;
 using Zpravodajstvi.Presentation.Models;
 
 namespace Zpravodajstvi.Presentation.Controllers;
@@ -12,18 +9,20 @@ namespace Zpravodajstvi.Presentation.Controllers;
 public class HomeController : Controller
 {
     private readonly IArticleService _articleService;
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ICategoryService _categoryService;
+    private readonly IUserService _userService;
 
-    public HomeController(IArticleService articleService, UserManager<ApplicationUser> userManager)
+    public HomeController(IArticleService articleService, ICategoryService categoryService, IUserService userService)
     {
         _articleService = articleService;
-        _userManager = userManager;
+        _categoryService = categoryService;
+        _userService = userService;
     }
 
     public async Task<IActionResult> Index(int? categoryId = null, string? tag = null, string? search = null)
     {
         var articles = await _articleService.GetArticlesAsync(categoryId, tag, search);
-        var categories = await _articleService.GetCategoriesAsync();
+        var categories = await _categoryService.GetAllCategoriesAsync();
 
         ViewBag.Categories = categories;
         ViewBag.CurrentCategory = categoryId;
@@ -43,13 +42,10 @@ public class HomeController : Controller
 
         // Pokud je uživatel přihlášen, zobrazíme jeho jméno ve formuláři komentáře
         // (jen pro informaci – autora komentáře při uložení určuje server podle účtu)
-        if (User?.Identity?.IsAuthenticated == true)
+        var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId != null)
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user != null)
-            {
-                article.CurrentUserName = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : (user.Email ?? string.Empty);
-            }
+            article.CurrentUserName = await _userService.GetDisplayNameAsync(userId);
         }
 
         return View(article);

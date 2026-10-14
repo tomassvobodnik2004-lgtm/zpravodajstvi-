@@ -1,0 +1,17 @@
+@* Navigace administrace. Správu účtů a rolí vidí jen Admin, Redaktor spravuje jen obsah. *@
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    string ButtonCss(string controller) => currentController == controller ? "btn-dark" : "btn-outline-dark";
+}
+
+<nav class="d-flex flex-wrap gap-2 mb-4" aria-label="Administrace">
+    <a asp-area="Admin" asp-controller="Article" asp-action="Index" class="btn btn-sm @ButtonCss("Article")">📰 Články</a>
+    <a asp-area="Admin" asp-controller="Category" asp-action="Index" class="btn btn-sm @ButtonCss("Category")">📁 Kategorie</a>
+    <a asp-area="Admin" asp-controller="Tag" asp-action="Index" class="btn btn-sm @ButtonCss("Tag")">🏷️ Štítky</a>
+    <a asp-area="Admin" asp-controller="Comment" asp-action="Index" class="btn btn-sm @ButtonCss("Comment")">💬 Komentáře</a>
+    @if (User.IsInRole(AppRoles.Admin))
+    {
+        <a asp-area="Admin" asp-controller="User" asp-action="Index" class="btn btn-sm @ButtonCss("User")">👥 Uživatelé</a>
+        <a asp-area="Admin" asp-controller="Role" asp-action="Index" class="btn btn-sm @ButtonCss("Role")">🔑 Role</a>
+    }
+</nav>

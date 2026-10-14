@@ -14,6 +14,7 @@ public class ArticleRepositoryTests : IDisposable
     private readonly SqliteConnection _connection;
     private readonly ApplicationDbContext _context;
     private readonly ArticleRepository _repository;
+    private readonly ApplicationUser _author;
 
     public ArticleRepositoryTests()
     {
@@ -28,6 +29,8 @@ public class ArticleRepositoryTests : IDisposable
         _context.Database.Migrate();
 
         var category = new Category { Name = "Sport" };
+        _author = new ApplicationUser { UserName = "redaktor@test.cz", Email = "redaktor@test.cz", FullName = "Jan Redaktor" };
+        _context.Users.Add(_author);
         _context.Articles.AddRange(
             new Article
             {
@@ -35,6 +38,7 @@ public class ArticleRepositoryTests : IDisposable
                 Perex = "Národní tým získal první body.",
                 Content = "Reprezentanti předvedli soustředěný výkon.",
                 Category = category,
+                Author = _author,
                 Tags = new List<Tag> { new() { Name = "Česko" } }
             },
             new Article
@@ -60,7 +64,7 @@ public class ArticleRepositoryTests : IDisposable
     public async Task GetAllAsync_SearchWithCzechCharacters_FindsArticle(string search)
     {
         // Act
-        var result = await _repository.GetAllAsync(search: search);
+        var result = await _repository.GetFilteredAsync(search: search);
 
         // Assert
         var article = Assert.Single(result);
@@ -74,11 +78,41 @@ public class ArticleRepositoryTests : IDisposable
     public async Task GetAllAsync_TagFilter_IgnoresCaseAndDiacritics(string tag)
     {
         // Act
-        var result = await _repository.GetAllAsync(tag: tag);
+        var result = await _repository.GetFilteredAsync(tag: tag);
 
         // Assert
         var article = Assert.Single(result);
         Assert.Contains(article.Tags, t => t.Name == "Česko");
+    }
+
+    [Fact]
+    public async Task GetFilteredAsync_ByAuthor_ReturnsAuthorsArticlesWithLoadedAuthor()
+    {
+        // Act
+        var result = await _repository.GetFilteredAsync(authorId: _author.Id);
+
+        // Assert – navigační vlastnost Author je načtená přes Include, takže je k dispozici jméno autora
+        var article = Assert.Single(result);
+        Assert.NotNull(article.Author);
+        Assert.Equal("Jan Redaktor", article.Author.FullName);
+    }
+
+    [Fact]
+    public async Task GetByIdWithDetailsAsync_LoadsAuthorOfArticleAndOfComments()
+    {
+        // Arrange
+        var article = _context.Articles.Single(a => a.AuthorId == _author.Id);
+        _context.Comments.Add(new Comment { ArticleId = article.Id, UserId = _author.Id, AuthorName = "Jan Redaktor", Content = "Komentář" });
+        _context.SaveChanges();
+        _context.ChangeTracker.Clear();
+
+        // Act
+        var result = await _repository.GetByIdWithDetailsAsync(article.Id);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("Jan Redaktor", result.Author?.FullName);
+        Assert.Equal("Jan Redaktor", Assert.Single(result.Comments).User?.FullName);
     }
 
     public void Dispose()

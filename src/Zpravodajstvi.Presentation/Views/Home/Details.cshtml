@@ -1,9 +1,22 @@
 @model Zpravodajstvi.Application.DTOs.ArticleDetailDto
 @using System.Security.Claims
+@using Microsoft.AspNetCore.Mvc.ModelBinding
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+@inject IModelMetadataProvider MetadataProvider
+@inject ValidationHtmlAttributeProvider ValidationAttributeProvider
 @{
     ViewData["Title"] = Model.Title;
     // Id přihlášeného uživatele – vlastník komentáře se pozná podle shody s comment.UserId
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    // Moderátoři (Admin a Redaktor) mohou upravit a smazat jakýkoli komentář
+    var isModerator = User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Redaktor);
+
+    // Atributy data-val-* pro klientskou validaci úpravy komentáře. MVC je vygeneruje z pravidel UpdateComment.Content
+    // ([Required], [StringLength], [NoProfanity]), takže prohlížeč kontroluje totéž co server.
+    var editContentExplorer = MetadataProvider.GetModelExplorerForType(typeof(UpdateComment), null)
+        .GetExplorerForProperty(nameof(UpdateComment.Content));
+    var editValidationAttributes = new Dictionary<string, string>();
+    ValidationAttributeProvider.AddValidationAttributes(ViewContext, editContentExplorer, editValidationAttributes);
 }
 
 <div class="row justify-content-center">
@@ -15,6 +28,7 @@
         <article class="card p-4 p-md-5 rounded shadow-sm mb-5 border-0">
             <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
                 <span class="badge bg-primary fs-6">@Model.CategoryName</span>
+                <span class="text-muted small">✍️ Autor: <strong>@Model.AuthorName</strong></span>
                 <span class="text-muted small">Publikováno: @Model.CreatedAt.ToString("d. M. yyyy v HH:mm")</span>
                 @if (Model.UpdatedAt.HasValue)
                 {
@@ -131,19 +145,19 @@
                 <div class="d-flex flex-column gap-3">
                     @foreach (var comment in Model.Comments)
                     {
-                        // Spravovat komentář smí Admin nebo jeho autor – shoda Id uživatele, ne jména
-                        var canManage = User.IsInRole("Admin") || (comment.UserId != null && comment.UserId == currentUserId);
+                        // Spravovat komentář smí moderátor nebo jeho autor – shoda Id uživatele, ne jména
+                        var canManage = isModerator || (comment.UserId != null && comment.UserId == currentUserId);
                         // Úprava tohoto komentáře neprošla validací – formulář zůstane otevřený s chybou
                         var failedEdit = Model.EditComment?.Id == comment.Id ? Model.EditComment : null;
 
-                        <div class="card border rounded p-3">
+                        <div class="card border rounded p-3" id="comment-@comment.Id">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <div>
                                     <span class="fw-bold text-body">👤 @comment.AuthorName</span>
                                     <small class="text-muted ms-2">@comment.CreatedAt.ToString("d. M. yyyy v HH:mm")</small>
                                 </div>
 
-                                @* Tlačítka se zobrazí pouze Adminovi nebo autorovi komentáře *@
+                                @* Tlačítka se zobrazí pouze moderátorovi (Admin, Redaktor) nebo autorovi komentáře *@
                                 @if (canManage)
                                 {
                                     <div class="btn-group btn-group-sm">
@@ -167,16 +181,35 @@
                             @* Editační formulář (rozbalí se pod komentářem, po chybě validace zůstane otevřený) *@
                             @if (canManage)
                             {
-                                <div class="collapse mt-3 pt-3 border-top @(failedEdit != null ? "show" : "")" id="editComment-@comment.Id">
+                                <div class="collapse comment-edit-collapse mt-3 pt-3 border-top @(failedEdit != null ? "show" : "")" id="editComment-@comment.Id">
                                     <form asp-controller="Comments" asp-action="Edit" method="post">
                                         <input type="hidden" name="EditComment.Id" value="@comment.Id" />
                                         <input type="hidden" name="EditComment.ArticleId" value="@Model.Id" />
                                         <div class="mb-2">
-                                            <label class="form-label fw-semibold small">Úprava komentáře:</label>
-                                            <textarea name="EditComment.Content" class="form-control" rows="3" required>@(failedEdit?.Content ?? comment.Content)</textarea>
+                                            <label for="editCommentContent-@comment.Id" class="form-label fw-semibold small">Úprava komentáře:</label>
+                                            @{
+                                                // Pole se jmenuje EditComment.Content (controller ho váže přes [Bind(Prefix = "EditComment")])
+                                                // a nese validační atributy z editValidationAttributes. Tag helper asp-for se tu nepoužívá,
+                                                // protože by po neúspěšné úpravě vložil odeslaný text do formulářů všech komentářů.
+                                                var editTextarea = new TagBuilder("textarea");
+                                                foreach (var attribute in editValidationAttributes)
+                                                {
+                                                    editTextarea.Attributes[attribute.Key] = attribute.Value;
+                                                }
+                                                editTextarea.Attributes["id"] = $"editCommentContent-{comment.Id}";
+                                                editTextarea.Attributes["name"] = "EditComment.Content";
+                                                editTextarea.Attributes["rows"] = "3";
+                                                editTextarea.AddCssClass("form-control");
+                                                editTextarea.InnerHtml.Append(failedEdit?.Content ?? comment.Content);
+                                            }
+                                            @editTextarea
                                             @if (failedEdit != null)
                                             {
                                                 <span asp-validation-for="EditComment.Content" class="text-danger small"></span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-danger small field-validation-valid" data-valmsg-for="EditComment.Content" data-valmsg-replace="true"></span>
                                             }
                                         </div>
                                         <div class="d-flex justify-content-end gap-2">
@@ -196,4 +229,15 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Formulář úpravy komentáře je schovaný v rozbalovacím panelu. Po rozbalení ho jQuery Validation
+        // načte znovu (unobtrusive.parse), aby text kontroloval podle stejných pravidel jako server.
+        document.querySelectorAll('.comment-edit-collapse').forEach(function (panel) {
+            panel.addEventListener('shown.bs.collapse', function () {
+                var form = panel.querySelector('form');
+                $(form).removeData('validator').removeData('unobtrusiveValidation');
+                $.validator.unobtrusive.parse(form);
+            });
+        });
+    </script>
 }

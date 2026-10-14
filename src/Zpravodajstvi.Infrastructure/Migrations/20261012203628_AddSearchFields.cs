@@ -38,33 +38,8 @@ namespace Zpravodajstvi.Infrastructure.Migrations
                 nullable: false,
                 defaultValue: "");
 
-            // Doplnění normalizovaných hodnot pro existující články a štítky
-            migrationBuilder.Sql(
-                $"""
-                UPDATE "Articles"
-                SET "SearchTitle" = {NormalizeSql("Title")},
-                    "SearchPerex" = {NormalizeSql("Perex")},
-                    "SearchContent" = {NormalizeSql("Content")};
-                """);
-
-            migrationBuilder.Sql($"""UPDATE "Tags" SET "SearchName" = {NormalizeSql("Name")};""");
-        }
-
-        // Česká a slovenská písmena s diakritikou a jejich náhrada (malé písmeno bez diakritiky)
-        private const string DiacriticChars = "áäčďéěíĺľňóôŕřšťúůýžÁÄČĎÉĚÍĹĽŇÓÔŔŘŠŤÚŮÝŽ";
-        private const string PlainChars = "aacdeeillnoorrstuuyzaacdeeillnoorrstuuyz";
-
-        // SQL výraz se stejným výsledkem jako SearchNormalizer.Normalize() pro český a slovenský text.
-        // SQLite funkce lower() převádí jen písmena ASCII, proto se nejdřív nahradí znaky s diakritikou.
-        private static string NormalizeSql(string column)
-        {
-            var expression = $"\"{column}\"";
-            for (var i = 0; i < DiacriticChars.Length; i++)
-            {
-                expression = $"replace({expression}, '{DiacriticChars[i]}', '{PlainChars[i]}')";
-            }
-
-            return $"lower({expression})";
+            // Hodnoty Search* vyplňuje ApplicationDbContext při každém uložení článku nebo štítku.
+            // Při vytváření nové databáze jsou tabulky v tomto kroku ještě prázdné.
         }
 
         /// <inheritdoc />

@@ -19,6 +19,11 @@ public class Article
     public int CategoryId { get; set; }
     public Category Category { get; set; } = null!;
 
+    // Cizí klíč a navigační vlastnost pro autora (uživatel, který článek vytvořil).
+    // Null = autor není známý nebo byl jeho účet smazán.
+    public string? AuthorId { get; set; }
+    public ApplicationUser? Author { get; set; }
+
     // Navigační vlastnosti pro související kolekce
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<Tag> Tags { get; set; } = new List<Tag>();

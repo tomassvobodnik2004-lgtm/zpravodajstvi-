@@ -1,17 +1,17 @@
-@using Microsoft.AspNetCore.Identity
-@using Zpravodajstvi.Infrastructure.Identity
-@using Zpravodajstvi.Infrastructure.Data
-@inject SignInManager<ApplicationUser> SignInManager
-@inject UserManager<ApplicationUser> UserManager
+@using System.Security.Claims
+@using Zpravodajstvi.Application.Interfaces
+@using Zpravodajstvi.Domain.Constants
+@* Přihlášení se pozná z User.Identity a role z User.IsInRole, jméno dodá IUserService (vrstva Application) *@
+@inject IUserService UserService
 
 <ul class="navbar-nav align-items-center">
-@if (SignInManager.IsSignedIn(User))
+@if (User.Identity?.IsAuthenticated == true)
 {
-    var currentUser = await UserManager.GetUserAsync(User);
-    var roles = currentUser != null ? await UserManager.GetRolesAsync(currentUser) : new List<string>();
-    var primaryRole = roles.FirstOrDefault() ?? "Uživatel";
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var displayName = (userId != null ? await UserService.GetDisplayNameAsync(userId) : null) ?? User.Identity?.Name;
+    var primaryRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "Uživatel";
 
-    @if (User.IsInRole(DbInitializer.RoleAdmin) || User.IsInRole(DbInitializer.RoleRedaktor))
+    @if (User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Redaktor))
     {
         <li class="nav-item me-2">
             <a class="btn btn-sm btn-warning text-dark fw-bold" asp-area="Admin" asp-controller="Article" asp-action="Index">
@@ -22,7 +22,7 @@
 
     <li class="nav-item me-2">
         <span class="badge bg-primary text-uppercase me-1">@primaryRole</span>
-        <span class="text-white fw-semibold">@(currentUser?.FullName ?? User.Identity?.Name)</span>
+        <a class="text-white fw-semibold text-decoration-none" asp-area="" asp-controller="Account" asp-action="Profile" title="Můj profil">@displayName</a>
     </li>
     <li class="nav-item">
         <form class="form-inline" asp-area="" asp-controller="Account" asp-action="Logout" method="post">
